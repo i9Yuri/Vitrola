@@ -1,0 +1,165 @@
+import os
+import re
+import json
+import shutil
+import subprocess
+from pathlib import Path
+from typing import Optional, Dict, Any
+
+CONFIG_FILE_PATH = Path(__file__).resolve().parent.parent.parent / "config" / "config.json"
+
+
+def load_config() -> Dict[str, Any]:
+    """Load configuration from config.json with safe fallbacks."""
+    default_cfg = {
+        "server": {"host": "127.0.0.1", "port": 8765},
+        "storage": {
+            "download_dir": "~/Downloads/MediaForge",
+            "fallback_dir": "downloads",
+        },
+        "defaults": {
+            "mode": "audio",
+            "embed_metadata": True,
+            "embed_thumbnail": True,
+            "embed_subtitles": False,
+            "default_subtitle_lang": "pt,en",
+            "audio_codec_priority": ["opus", "m4a", "webm"],
+            "max_video_resolution": 1080,
+        },
+    }
+    if not CONFIG_FILE_PATH.exists():
+        return default_cfg
+    try:
+        with open(CONFIG_FILE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            # Merge shallow keys
+            for k, v in default_cfg.items():
+                if k not in data:
+                    data[k] = v
+                elif isinstance(v, dict) and isinstance(data[k], dict):
+                    merged = {**v, **data[k]}
+                    data[k] = merged
+            return data
+    except Exception as e:
+        print(f"[System] Warning: Failed to parse {CONFIG_FILE_PATH}: {e}")
+        return default_cfg
+
+
+def save_config(new_config: Dict[str, Any]) -> bool:
+    """Save updated configuration to config.json."""
+    try:
+        CONFIG_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(CONFIG_FILE_PATH, "w", encoding="utf-8") as f:
+            json.dump(new_config, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"[System] Error saving config: {e}")
+        return False
+
+
+def get_download_directory() -> Path:
+    """Resolve and create the effective download directory."""
+    cfg = load_config()
+    raw_path = cfg.get("storage", {}).get("download_dir", "~/Downloads/MediaForge")
+    expanded = Path(os.path.expanduser(raw_path)).resolve()
+
+    try:
+        expanded.mkdir(parents=True, exist_ok=True)
+        # Test writability
+        test_file = expanded / ".write_test"
+        test_file.touch()
+        test_file.unlink()
+        return expanded
+    except Exception as e:
+        print(f"[System] Cannot write to {expanded} ({e}), falling back to local downloads/")
+        fallback = (Path(__file__).resolve().parent.parent.parent / "downloads").resolve()
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
+
+
+def sanitize_filename(name: str) -> str:
+    """
+    Sanitize filename for Linux ext4/POSIX compatibility.
+    Removes null bytes, forward slashes, and control characters while preserving unicode.
+    """
+    # Replace slashes and backslashes with underscores or hyphens
+    sanitized = re.sub(r'[/\\:\0*?"<>|]', "-", name)
+    # Collapse multiple whitespace or hyphens
+    sanitized = re.sub(r"\s+", " ", sanitized).strip()
+    sanitized = re.sub(r"-+", "-", sanitized)
+    if not sanitized:
+        sanitized = "media_download"
+    # Linux max filename is 255 bytes
+    return sanitized[:240]
+
+
+def get_unique_filepath(directory: Path, desired_name: str, ext: str) -> Path:
+    """
+    Returns a unique file path in the target directory by appending _1, _2 if already exists.
+    """
+    clean_base = sanitize_filename(desired_name)
+    clean_ext = ext.lstrip(".")
+    candidate = directory / f"{clean_base}.{clean_ext}"
+
+    if not candidate.exists():
+        return candidate
+
+    counter = 1
+    while True:
+        candidate = directory / f"{clean_base}_{counter}.{clean_ext}"
+        if not candidate.exists():
+            return candidate
+        counter += 1
+
+
+def open_in_file_manager(target_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Open the directory or file with xdg-open in Nobara Linux.
+    Returns status dict.
+    """
+    if not shutil.which("xdg-open"):
+        return {"success": False, "error": "xdg-open binary not found on system"}
+
+    path_to_open = Path(target_path) if target_path else get_download_directory()
+
+    if not path_to_open.exists():
+        path_to_open = get_download_directory()
+
+    # If it's a file, open its parent folder or the file directly
+    dest = str(path_to_open)
+    try:
+        subprocess.Popen(
+            ["xdg-open", dest],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        return {"success": True, "opened": dest}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def format_bytes(size: Optional[float]) -> str:
+    """Format bytes into human-readable string."""
+    if size is None or size <= 0:
+        return "N/A"
+    units = ["B", "KiB", "MiB", "GiB", "TiB"]
+    val = float(size)
+    for u in units:
+        if val < 1024.0 or u == units[-1]:
+            return f"{val:.1f} {u}"
+        val /= 1024.0
+    return f"{val:.1f} GiB"
+
+
+def format_seconds(seconds: Optional[float]) -> str:
+    """Format seconds into HH:MM:SS or MM:SS."""
+    if seconds is None or seconds < 0:
+        return "--:--"
+    total_secs = int(seconds)
+    hours = total_secs // 3600
+    minutes = (total_secs % 3600) // 60
+    secs = total_secs % 60
+    if hours > 0:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"

@@ -1,0 +1,19 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8765
+  },
+  "storage": {
+    "download_dir": "~/Downloads/MediaForge",
+    "fallback_dir": "downloads"
+  },
+  "defaults": {
+    "mode": "audio",
+    "embed_metadata": true,
+    "embed_thumbnail": true,
+    "embed_subtitles": false,
+    "default_subtitle_lang": "pt,en",
+    "audio_codec_priority": ["opus", "m4a", "webm"],
+    "max_video_resolution": 1080
+  }
+}

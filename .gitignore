@@ -1,0 +1,16 @@
+# MediaForge Git Ignore
+downloads/
+*.part
+*.ytdl
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+node_modules/
+.env
+*.log
+.DS_Store
