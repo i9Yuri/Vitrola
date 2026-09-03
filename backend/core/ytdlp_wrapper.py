@@ -91,18 +91,39 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
     duration = data.get("duration")
     duration_str = format_seconds(duration) if duration else "--:--"
 
-    # High quality thumbnail
-    thumbnails = data.get("thumbnails", [])
-    thumbnail_url = data.get("thumbnail")
-    if thumbnails:
-        # Pick the largest/best resolution thumbnail
-        sorted_thumbs = sorted(
-            [t for t in thumbnails if t.get("url")],
-            key=lambda x: (x.get("preference", 0) or 0, (x.get("width", 0) or 0) * (x.get("height", 0) or 0)),
-            reverse=True,
-        )
-        if sorted_thumbs:
-            thumbnail_url = sorted_thumbs[0]["url"]
+    # High quality thumbnail extraction (filtering 404-prone webp like vi_webp/maxresdefault.webp)
+    vid_id = data.get("id")
+    thumbnails = data.get("thumbnails", []) or []
+    thumbnail_url = None
+
+    valid_thumbs = []
+    for t in thumbnails:
+        u = t.get("url", "")
+        if not u:
+            continue
+        # Exclude webp URLs that frequently return 404 on Google CDN
+        if "vi_webp" in u or u.endswith("maxresdefault.webp"):
+            continue
+        valid_thumbs.append(t)
+
+    if valid_thumbs:
+        def thumb_score(thumb):
+            u = thumb.get("url", "")
+            is_jpg = ".jpg" in u or ".jpeg" in u
+            w = thumb.get("width") or 0
+            h = thumb.get("height") or 0
+            pref = thumb.get("preference") or 0
+            return (1 if is_jpg else 0, pref, w * h)
+
+        sorted_thumbs = sorted(valid_thumbs, key=thumb_score, reverse=True)
+        thumbnail_url = sorted_thumbs[0].get("url")
+
+    if not thumbnail_url or "vi_webp" in thumbnail_url:
+        thumbnail_url = data.get("thumbnail")
+
+    # Safe fallback to standard YouTube thumbnail if missing or 404-prone
+    if (not thumbnail_url or "vi_webp" in thumbnail_url or "maxresdefault.webp" in thumbnail_url) and vid_id:
+        thumbnail_url = f"https://i.ytimg.com/vi/{vid_id}/hqdefault.jpg"
 
     tags = data.get("tags", []) or []
     view_count = data.get("view_count")

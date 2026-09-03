@@ -142,12 +142,24 @@ def open_in_file_manager(target_path: Optional[str] = None) -> Dict[str, Any]:
     if not shutil.which("xdg-open"):
         return {"success": False, "error": "xdg-open binary not found on system"}
 
-    path_to_open = Path(target_path) if target_path else get_download_directory()
+    dl_dir = get_download_directory()
+    path_to_open = None
 
-    if not path_to_open.exists():
-        path_to_open = get_download_directory()
+    if target_path:
+        p = Path(target_path)
+        if p.exists():
+            path_to_open = p
+        else:
+            # Check if it's a relative filename in download dir
+            candidate = dl_dir / target_path
+            if candidate.exists():
+                path_to_open = candidate
+            elif p.parent.exists():
+                path_to_open = p.parent
 
-    # If it's a file, open its parent folder or the file directly
+    if not path_to_open or not path_to_open.exists():
+        path_to_open = dl_dir
+
     dest = str(path_to_open)
     try:
         subprocess.Popen(

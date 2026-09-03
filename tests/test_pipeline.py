@@ -119,6 +119,10 @@ class TestMediaForgeCore(unittest.TestCase):
             "uploader": "Audio Artist - Topic",
             "duration": 180,
             "track": "Studio Master Track",
+            "thumbnails": [
+                {"url": "https://i.ytimg.com/vi_webp/ytm_123/maxresdefault.webp", "preference": 0},
+                {"url": "https://i.ytimg.com/vi/ytm_123/maxresdefault.jpg", "preference": -1, "width": 1920, "height": 1080},
+            ],
             "formats": [
                 {
                     "format_id": "251",
@@ -132,6 +136,8 @@ class TestMediaForgeCore(unittest.TestCase):
         }
         res_music = parse_inspection_data(yt_music_dump, "https://music.youtube.com/watch?v=ytm_123")
         self.assertTrue(res_music["success"])
+        # Verify robust thumbnail selection avoided 404-prone webp
+        self.assertEqual(res_music["metadata"]["thumbnail"], "https://i.ytimg.com/vi/ytm_123/maxresdefault.jpg")
         self.assertTrue(res_music["metadata"]["is_music_track"])
         self.assertFalse(res_music["metadata"]["has_real_video"])
         # Title clean

@@ -67,6 +67,9 @@ const elements = {
   historyContainer: document.getElementById("history-container"),
   historyEmpty: document.getElementById("history-empty"),
 
+  // Options Collapsible Wrapper
+  optionsCollapsible: document.getElementById("options-collapsible"),
+
   // yt-dlp Updater & Toast Notifications
   btnUpdater: document.getElementById("btn-updater"),
   updaterSyncIcon: document.getElementById("updater-sync-icon"),
@@ -84,13 +87,34 @@ document.addEventListener("DOMContentLoaded", () => {
   loadUpdaterStatus();
   // Poll updater status periodically
   setInterval(loadUpdaterStatus, 12000);
+
+  // Autofoco instantâneo e seleção no input
+  if (elements.urlInput) {
+    elements.urlInput.focus();
+    elements.urlInput.select();
+  }
 });
 
 function setupEventListeners() {
   // Inspect Form
   elements.inspectForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    handleInspect();
+    handleInspect(false);
+  });
+
+  // Enter Key: Ação rápida para inspecionar e baixar automaticamente
+  elements.urlInput.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const val = elements.urlInput.value.trim();
+      if (!val) return;
+
+      if (state.inspectionData && state.currentUrl === val) {
+        handleStartDownload();
+      } else {
+        await handleInspect(true);
+      }
+    }
   });
 
   // Paste clipboard shortcut
@@ -273,7 +297,7 @@ function hideError() {
   elements.errorMessage.textContent = "";
 }
 
-async function handleInspect() {
+async function handleInspect(autoDownload = false) {
   const url = elements.urlInput.value.trim();
   if (!url) return;
 
@@ -297,6 +321,13 @@ async function handleInspect() {
     state.currentUrl = url;
     state.inspectionData = data;
     renderInspection(data);
+
+    if (autoDownload) {
+      showToast("Download automático iniciado (Áudio Puro Bit-Perfect)", "success");
+      setTimeout(() => {
+        handleStartDownload();
+      }, 120);
+    }
   } catch (err) {
     showError("Erro de comunicação com o servidor local: " + err.message);
   } finally {
@@ -312,15 +343,27 @@ function setInspectLoading(loading) {
   } else {
     elements.btnInspect.disabled = false;
     elements.inspectSpinner.classList.add("hidden");
-    elements.inspectBtnText.textContent = "Analisar Mídia";
+    elements.inspectBtnText.textContent = "Analisar";
   }
 }
 
 function renderInspection(data) {
   const meta = data.metadata;
 
-  // Header data
+  // Reabrir painel de opções ao inspecionar nova mídia
+  if (elements.optionsCollapsible) {
+    elements.optionsCollapsible.classList.remove("collapsed");
+  }
+
+  // Header data & Fallback robusto para thumbnail
   elements.mediaThumbnail.src = meta.thumbnail || "";
+  elements.mediaThumbnail.onerror = () => {
+    const vidId = meta.id;
+    if (vidId && !elements.mediaThumbnail.src.includes("hqdefault.jpg")) {
+      elements.mediaThumbnail.src = `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg`;
+    }
+  };
+
   elements.mediaDuration.textContent = meta.duration_str || "--:--";
   elements.mediaTitle.textContent = meta.title || "Mídia sem título";
   elements.mediaUploader.textContent = meta.uploader || "Desconhecido";
@@ -487,6 +530,11 @@ function startProgressMonitoring(taskId) {
     state.eventSource.close();
   }
 
+  // Recolher o painel de opções de formato para focar no progresso
+  if (elements.optionsCollapsible) {
+    elements.optionsCollapsible.classList.add("collapsed");
+  }
+
   // Reset Progress Card UI
   elements.progressCard.classList.remove("hidden");
   elements.progressCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -635,7 +683,7 @@ function renderHistory(items) {
           ${escapeHtml(item.filename || item.title)}
         </span>
       </div>
-      <button class="btn btn-secondary btn-compact btn-open-item" title="Abrir pasta no gerenciador">
+      <button class="btn-open-item" title="Abrir arquivo ou pasta de destino">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
         </svg>
@@ -645,7 +693,7 @@ function renderHistory(items) {
 
     const btn = el.querySelector(".btn-open-item");
     btn.addEventListener("click", () => {
-      openFolder(item.filepath || null);
+      openFolder(item.filepath || item.filename || null);
     });
 
     elements.historyContainer.appendChild(el);
