@@ -18,11 +18,13 @@ from backend.core.system import (
     save_config,
     get_download_directory,
     open_in_file_manager,
+    get_resource_path,
 )
 from backend.core.ytdlp_wrapper import inspect_url
+from backend.core.updater import updater
 from backend.downloader import manager
 
-FRONTEND_DIR = PROJECT_ROOT / "frontend"
+FRONTEND_DIR = get_resource_path("frontend")
 
 
 class MediaForgeHandler(BaseHTTPRequestHandler):
@@ -75,7 +77,12 @@ class MediaForgeHandler(BaseHTTPRequestHandler):
             self._send_json({"success": True, "config": cfg})
             return
 
-        # 4. Static frontend files
+        # 4. API: yt-dlp Updater Status
+        if path == "/api/updater/status":
+            self._send_json({"success": True, "updater": updater.to_dict()})
+            return
+
+        # 5. Static frontend files
         if path == "/" or path == "/index.html":
             self._serve_file(FRONTEND_DIR / "index.html", "text/html; charset=utf-8")
             return
@@ -144,6 +151,19 @@ class MediaForgeHandler(BaseHTTPRequestHandler):
                 self._send_json({"success": True, "config": load_config()})
             else:
                 self._send_error_json("Erro ao salvar configuração no disco")
+            return
+
+        # 5. API: Check yt-dlp update
+        if path == "/api/updater/check":
+            res = updater.check_for_updates(force=True)
+            self._send_json({"success": True, "updater": res})
+            return
+
+        # 6. API: Trigger yt-dlp update
+        if path == "/api/updater/update":
+            res = updater.perform_update(manager)
+            status_code = 200 if res.get("success") else 400
+            self._send_json(res, status_code)
             return
 
         self._send_error_json("Endpoint não encontrado", 404)
@@ -220,6 +240,9 @@ def run_server(headless: bool = False):
     print("=" * 65)
 
     server = ThreadingHTTPServer((host, port), MediaForgeHandler)
+
+    # Iniciar verificação assíncrona não bloqueante do yt-dlp
+    updater.start_background_worker(delay_seconds=6)
 
     if headless or (not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY")):
         print("Executando em modo servidor (headless). Pressione Ctrl+C para encerrar.")

@@ -66,6 +66,14 @@ const elements = {
   btnRefreshHistory: document.getElementById("btn-refresh-history"),
   historyContainer: document.getElementById("history-container"),
   historyEmpty: document.getElementById("history-empty"),
+
+  // yt-dlp Updater & Toast Notifications
+  btnUpdater: document.getElementById("btn-updater"),
+  updaterSyncIcon: document.getElementById("updater-sync-icon"),
+  ytdlpVersionBadge: document.getElementById("ytdlp-version-badge"),
+  toastContainer: document.getElementById("toast-container"),
+  toastMessage: document.getElementById("toast-message"),
+  toastIcon: document.getElementById("toast-icon"),
 };
 
 // Initial Setup
@@ -73,6 +81,9 @@ document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   loadConfig();
   loadHistory();
+  loadUpdaterStatus();
+  // Poll updater status periodically
+  setInterval(loadUpdaterStatus, 12000);
 });
 
 function setupEventListeners() {
@@ -89,13 +100,14 @@ function setupEventListeners() {
       if (text) {
         elements.urlInput.value = text.trim();
         elements.urlInput.focus();
+        showToast("Link colado da área de transferência", "success");
       }
     } catch (err) {
       console.warn("Clipboard access denied or unavailable", err);
     }
   });
 
-  // Mode Toggles
+  // Mode Toggles (Segmented Control)
   elements.modeAudioBtn.addEventListener("click", () => setMode("audio"));
   elements.modeVideoBtn.addEventListener("click", () => setMode("video"));
 
@@ -117,6 +129,104 @@ function setupEventListeners() {
 
   // History Refresh
   elements.btnRefreshHistory.addEventListener("click", loadHistory);
+
+  // Manual yt-dlp update check
+  if (elements.btnUpdater) {
+    elements.btnUpdater.addEventListener("click", handleManualUpdater);
+  }
+}
+
+// --------------------------------------------------------------------------
+// Toast Notification System
+// --------------------------------------------------------------------------
+let toastTimeout = null;
+function showToast(message, type = "success") {
+  if (!elements.toastContainer) return;
+  clearTimeout(toastTimeout);
+  elements.toastMessage.textContent = message;
+  elements.toastIcon.textContent = type === "error" ? "✕" : (type === "warning" ? "⚠" : "✔");
+  elements.toastContainer.classList.remove("hidden");
+  toastTimeout = setTimeout(() => {
+    elements.toastContainer.classList.add("hidden");
+  }, 3800);
+}
+
+// --------------------------------------------------------------------------
+// yt-dlp Updater Controller
+// --------------------------------------------------------------------------
+async function loadUpdaterStatus() {
+  try {
+    const res = await fetch("/api/updater/status");
+    const data = await res.json();
+    if (data.success && data.updater) {
+      updateUpdaterUI(data.updater);
+    }
+  } catch (e) {
+    console.warn("Failed to get updater status", e);
+  }
+}
+
+function updateUpdaterUI(up) {
+  if (!elements.btnUpdater || !elements.ytdlpVersionBadge) return;
+
+  if (up.current_version && up.current_version !== "desconhecida") {
+    elements.ytdlpVersionBadge.textContent = `yt-dlp v${up.current_version}`;
+  }
+
+  if (up.status === "checking") {
+    elements.btnUpdater.classList.add("updating");
+    elements.ytdlpVersionBadge.textContent = "Verificando...";
+  } else if (up.status === "updating") {
+    elements.btnUpdater.classList.add("updating");
+    elements.ytdlpVersionBadge.textContent = "Atualizando...";
+  } else {
+    elements.btnUpdater.classList.remove("updating");
+    if (up.update_available && up.latest_version) {
+      elements.btnUpdater.classList.add("available");
+      elements.ytdlpVersionBadge.textContent = `Nova v${up.latest_version} disp.!`;
+    } else {
+      elements.btnUpdater.classList.remove("available");
+      if (up.current_version) {
+        elements.ytdlpVersionBadge.textContent = `yt-dlp v${up.current_version}`;
+      }
+    }
+  }
+}
+
+async function handleManualUpdater() {
+  elements.btnUpdater.classList.add("updating");
+  showToast("Consultando releases do yt-dlp...", "warning");
+
+  try {
+    const res = await fetch("/api/updater/check", { method: "POST" });
+    const data = await res.json();
+    if (data.success && data.updater) {
+      updateUpdaterUI(data.updater);
+
+      setTimeout(async () => {
+        const checkRes = await fetch("/api/updater/status");
+        const checkData = await checkRes.json();
+        if (checkData.success && checkData.updater) {
+          const up = checkData.updater;
+          updateUpdaterUI(up);
+
+          if (up.update_available) {
+            showToast(`Nova versão v${up.latest_version} encontrada! Atualizando...`, "warning");
+            const updRes = await fetch("/api/updater/update", { method: "POST" });
+            const updData = await updRes.json();
+            if (!updData.success) {
+              showToast(updData.error || "Atualização pausada", "warning");
+            }
+          } else {
+            showToast(up.message || `yt-dlp v${up.current_version} está atualizado!`, "success");
+          }
+        }
+      }, 2000);
+    }
+  } catch (err) {
+    showToast("Erro ao verificar atualização: " + err.message, "error");
+    elements.btnUpdater.classList.remove("updating");
+  }
 }
 
 // --------------------------------------------------------------------------

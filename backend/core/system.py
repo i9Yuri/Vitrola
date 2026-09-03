@@ -1,12 +1,32 @@
 import os
 import re
+import sys
 import json
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-CONFIG_FILE_PATH = Path(__file__).resolve().parent.parent.parent / "config" / "config.json"
+
+def get_resource_path(relative_path: str) -> Path:
+    """Get absolute path to resource, works for dev and for PyInstaller bundle."""
+    if hasattr(sys, "_MEIPASS"):
+        return Path(getattr(sys, "_MEIPASS")) / relative_path
+    return (Path(__file__).resolve().parent.parent.parent / relative_path).resolve()
+
+
+def get_config_path() -> Path:
+    """Get the active configuration file path honoring XDG standard."""
+    user_config = Path(os.path.expanduser("~/.config/mediaforge/config.json"))
+    if user_config.exists():
+        return user_config
+    local_cfg = Path.cwd() / "config" / "config.json"
+    if local_cfg.exists():
+        return local_cfg
+    pkg_cfg = get_resource_path("config/config.json")
+    if pkg_cfg.exists():
+        return pkg_cfg
+    return user_config
 
 
 def load_config() -> Dict[str, Any]:
@@ -27,10 +47,11 @@ def load_config() -> Dict[str, Any]:
             "max_video_resolution": 1080,
         },
     }
-    if not CONFIG_FILE_PATH.exists():
+    cfg_path = get_config_path()
+    if not cfg_path.exists():
         return default_cfg
     try:
-        with open(CONFIG_FILE_PATH, "r", encoding="utf-8") as f:
+        with open(cfg_path, "r", encoding="utf-8") as f:
             data = json.load(f)
             # Merge shallow keys
             for k, v in default_cfg.items():
@@ -41,15 +62,16 @@ def load_config() -> Dict[str, Any]:
                     data[k] = merged
             return data
     except Exception as e:
-        print(f"[System] Warning: Failed to parse {CONFIG_FILE_PATH}: {e}")
+        print(f"[System] Warning: Failed to parse {cfg_path}: {e}")
         return default_cfg
 
 
 def save_config(new_config: Dict[str, Any]) -> bool:
-    """Save updated configuration to config.json."""
+    """Save updated configuration to ~/.config/mediaforge/config.json."""
+    target = Path(os.path.expanduser("~/.config/mediaforge/config.json"))
     try:
-        CONFIG_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(CONFIG_FILE_PATH, "w", encoding="utf-8") as f:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with open(target, "w", encoding="utf-8") as f:
             json.dump(new_config, f, indent=2, ensure_ascii=False)
         return True
     except Exception as e:
@@ -72,7 +94,7 @@ def get_download_directory() -> Path:
         return expanded
     except Exception as e:
         print(f"[System] Cannot write to {expanded} ({e}), falling back to local downloads/")
-        fallback = (Path(__file__).resolve().parent.parent.parent / "downloads").resolve()
+        fallback = (Path.cwd() / "downloads").resolve()
         fallback.mkdir(parents=True, exist_ok=True)
         return fallback
 

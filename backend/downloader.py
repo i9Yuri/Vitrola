@@ -11,7 +11,16 @@ from typing import Dict, Any, Optional, List
 from .core.ytdlp_wrapper import build_download_command, clean_media_title
 from .core.system import get_download_directory, open_in_file_manager
 
-HISTORY_FILE = Path(__file__).resolve().parent.parent / "config" / "history.json"
+def get_history_file() -> Path:
+    user_hist = Path(os.path.expanduser("~/.config/mediaforge/history.json"))
+    if user_hist.exists():
+        return user_hist
+    local_hist = Path.cwd() / "config" / "history.json"
+    if local_hist.parent.exists():
+        return local_hist
+    return user_hist
+
+HISTORY_FILE = get_history_file()
 
 
 class DownloadTask:
@@ -118,6 +127,14 @@ class DownloadManager:
     def get_history(self) -> List[Dict[str, Any]]:
         with self._lock:
             return list(self.history)
+
+    def is_download_active(self) -> bool:
+        """Returns True if any task is currently downloading or processing."""
+        with self._lock:
+            for t in self.tasks.values():
+                if t.status in ["downloading", "processing"]:
+                    return True
+            return False
 
     def _run_task(self, task: DownloadTask):
         download_dir = get_download_directory()
