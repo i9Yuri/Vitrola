@@ -70,6 +70,9 @@ class TestMediaForgeCore(unittest.TestCase):
         self.assertNotIn("-x", cmd)
         self.assertNotIn("--audio-format", cmd)
         self.assertNotIn("mp3", cmd_str)
+        # Verify clean output template (no [%(id)s])
+        self.assertNotIn("[%(id)s]", cmd_str)
+        self.assertIn("/%(title)s.%(ext)s", cmd_str)
 
     def test_video_mp4_command_flags(self):
         cmd = build_download_command(
@@ -89,11 +92,59 @@ class TestMediaForgeCore(unittest.TestCase):
         self.assertIn("pt,en", cmd)
         self.assertIn("--embed-subs", cmd)
         self.assertIn("height<=1080", cmd_str)
+        # Verify clean output template (no [%(id)s])
+        self.assertNotIn("[%(id)s]", cmd_str)
+        self.assertIn("/%(title)s.%(ext)s", cmd_str)
+
+    def test_clean_media_title(self):
+        from backend.core.ytdlp_wrapper import clean_media_title
+        self.assertEqual(
+            clean_media_title("Daft Punk - Around the World [dQw4w9WgXcQ]"),
+            "Daft Punk - Around the World"
+        )
+        self.assertEqual(
+            clean_media_title("AC/DC - Back in Black [aqz-KE-bpKQ]"),
+            "AC/DC - Back in Black"
+        )
+        self.assertEqual(
+            clean_media_title("Song Name [Official Video]"),
+            "Song Name [Official Video]"
+        )
+
+    def test_youtube_music_and_badges(self):
+        # 1. YouTube Music Mock
+        yt_music_dump = {
+            "id": "ytm_123",
+            "title": "Studio Master Track [dQw4w9WgXcQ]",
+            "uploader": "Audio Artist - Topic",
+            "duration": 180,
+            "track": "Studio Master Track",
+            "formats": [
+                {
+                    "format_id": "251",
+                    "ext": "webm",
+                    "vcodec": "none",
+                    "acodec": "opus",
+                    "abr": 160.0,
+                    "asr": 48000,
+                }
+            ]
+        }
+        res_music = parse_inspection_data(yt_music_dump, "https://music.youtube.com/watch?v=ytm_123")
+        self.assertTrue(res_music["success"])
+        self.assertTrue(res_music["metadata"]["is_music_track"])
+        self.assertFalse(res_music["metadata"]["has_real_video"])
+        # Title clean
+        self.assertEqual(res_music["metadata"]["title"], "Studio Master Track")
+        # Audio badge
+        self.assertEqual(res_music["audio_streams"][0]["badge"], "ORIGINAL / BIT-PERFECT")
+        # Video presets empty since has_real_video is False
+        self.assertEqual(len(res_music["video_presets"]), 0)
 
     def test_parse_inspection_data(self):
         mock_dump = {
             "id": "mock_id",
-            "title": "Industrial Sound Machine - Track 01",
+            "title": "Industrial Sound Machine - Track 01 [aqz-KE-bpKQ]",
             "uploader": "AudioForge Lab",
             "duration": 245,
             "thumbnails": [{"url": "https://img.youtube.com/vi/mock/maxresdefault.jpg", "preference": 1}],
@@ -146,18 +197,22 @@ class TestMediaForgeCore(unittest.TestCase):
         meta = parsed["metadata"]
         self.assertEqual(meta["title"], "Industrial Sound Machine - Track 01")
         self.assertEqual(meta["duration_str"], "04:05")
+        self.assertFalse(meta["is_music_track"])
+        self.assertTrue(meta["has_real_video"])
 
         # Audio streams
         audio = parsed["audio_streams"]
         self.assertEqual(len(audio), 2)
-        # Opus should be sorted first (preferred)
+        # Opus should be sorted first (preferred) with badge
         self.assertEqual(audio[0]["codec_name"], "Opus")
+        self.assertEqual(audio[0]["badge"], "ORIGINAL / BIT-PERFECT")
         self.assertEqual(audio[0]["format_id"], "251")
         self.assertEqual(audio[1]["codec_name"], "AAC / M4A")
 
-        # Video presets
+        # Video presets with best quality badge
         video_presets = parsed["video_presets"]
         self.assertTrue(any(p["height"] == 1080 for p in video_presets))
+        self.assertEqual(video_presets[0]["badge"], "MELHOR QUALIDADE")
 
         # Subtitles
         subs = parsed["subtitles"]

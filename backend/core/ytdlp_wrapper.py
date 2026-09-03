@@ -11,6 +11,14 @@ FFMPEG_BIN = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
 NODE_BIN = shutil.which("node")
 
 
+def clean_media_title(raw_title: str) -> str:
+    """Removes trailing bracketed 11-character video IDs like [aqz-KE-bpKQ] from titles."""
+    if not raw_title:
+        return ""
+    cleaned = re.sub(r"\s*\[[a-zA-Z0-9_-]{11}\]$", "", raw_title).strip()
+    return cleaned or raw_title
+
+
 def inspect_url(url: str, timeout: int = 40) -> Dict[str, Any]:
     """
     Extract video/audio metadata using yt-dlp --dump-single-json.
@@ -72,7 +80,8 @@ def inspect_url(url: str, timeout: int = 40) -> Dict[str, Any]:
 def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, Any]:
     """Parse raw yt-dlp JSON dump into clean, structured data for the frontend."""
     # Video details
-    title = data.get("title", "Mídia sem título")
+    raw_title = data.get("title", "Mídia sem título")
+    title = clean_media_title(raw_title)
     uploader = (
         data.get("uploader")
         or data.get("channel")
@@ -176,6 +185,33 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
 
     audio_streams.sort(key=audio_sort_key, reverse=True)
 
+    # Decorate audio streams with clean visual badges
+    for idx, s in enumerate(audio_streams):
+        if idx == 0:
+            s["badge"] = "ORIGINAL / BIT-PERFECT"
+            s["is_best"] = True
+            s["label"] = f"{s['codec_name']} ({s['ext'].upper()}) - {s['bitrate_label']} [ORIGINAL / BIT-PERFECT]"
+        else:
+            s["badge"] = None
+            s["is_best"] = False
+            s["label"] = f"{s['codec_name']} ({s['ext'].upper()}) - {s['bitrate_label']} [{s['size_label']}]"
+
+    # Detect YouTube Music / pure phonographic audio tracks
+    is_music_domain = "music.youtube.com" in original_url.lower()
+    uploader_str = str(uploader).lower()
+    is_topic_channel = uploader_str.endswith("- topic") or " - topic" in uploader_str
+    has_track_meta = bool(data.get("track") or data.get("album") or data.get("artist"))
+    is_music_track = is_music_domain or is_topic_channel or has_track_meta
+
+    # Check for genuine video streams (not just static canvas or storyboard)
+    real_video_streams = [
+        f for f in video_formats
+        if (f.get("height") or 0) >= 144 and (f.get("fps") or 0) >= 10 and f.get("vcodec") not in ["none", None, ""]
+    ]
+    has_real_video = (len(real_video_streams) > 0) and not is_music_domain
+    if is_topic_channel and len(real_video_streams) == 0:
+        has_real_video = False
+
     # Standard video quality presets
     preset_order = [4320, 2160, 1440, 1080, 720, 480, 360, 240, 144]
     available_presets = []
@@ -193,20 +229,32 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
         144: "144p",
     }
 
-    for p in preset_order:
-        if p in video_resolutions or (available_presets == [] and max_height >= p):
+    if has_real_video:
+        for p in preset_order:
+            if p in video_resolutions or (available_presets == [] and max_height >= p):
+                available_presets.append({
+                    "height": p,
+                    "label": preset_names.get(p, f"{p}p"),
+                    "is_default": p == 1080 or (p == max_height and max_height < 1080),
+                })
+        # If no standard preset matched but max_height exists
+        if not available_presets and max_height > 0:
             available_presets.append({
-                "height": p,
-                "label": preset_names.get(p, f"{p}p"),
-                "is_default": p == 1080 or (p == max_height and max_height < 1080),
+                "height": max_height,
+                "label": f"Resolução Nativa ({max_height}p)",
+                "is_default": True,
             })
-    # If no standard preset matched but max_height exists
-    if not available_presets and max_height > 0:
-        available_presets.append({
-            "height": max_height,
-            "label": f"Resolução Nativa ({max_height}p)",
-            "is_default": True,
-        })
+
+        # Decorate video presets with best quality badge
+        for idx, p in enumerate(available_presets):
+            if idx == 0:
+                p["badge"] = "MELHOR QUALIDADE"
+                p["is_best"] = True
+                p["label_formatted"] = f"{p['label']} [MELHOR QUALIDADE]"
+            else:
+                p["badge"] = None
+                p["is_best"] = False
+                p["label_formatted"] = p["label"]
 
     # Subtitles
     subs = data.get("subtitles", {}) or {}
@@ -250,6 +298,8 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
             "thumbnail": thumbnail_url,
             "tags": tags[:10],
             "view_count": view_count,
+            "is_music_track": is_music_track,
+            "has_real_video": has_real_video,
         },
         "audio_streams": audio_streams,
         "video_presets": available_presets,
@@ -271,6 +321,7 @@ def build_download_command(
     """
     Builds the exact yt-dlp command-line arguments.
     Enforces pure audio without transcoding and MP4 multi-resolution container.
+    Saves cleanly as <Title>.<ext> without video ID brackets.
     """
     cmd = [
         YTDLP_BIN,
@@ -288,7 +339,7 @@ def build_download_command(
     if NODE_BIN:
         cmd.extend(["--js-runtimes", f"node:{NODE_BIN}"])
 
-    output_template = str(output_dir / "%(title)s [%(id)s].%(ext)s")
+    output_template = str(output_dir / "%(title)s.%(ext)s")
     cmd.extend(["-o", output_template])
 
     if mode == "audio":

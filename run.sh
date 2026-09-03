@@ -21,11 +21,7 @@ for bin in python3 yt-dlp ffmpeg ffprobe; do
 done
 
 echo "✔ Ambiente Nobara Linux verificado (python3, yt-dlp, ffmpeg, ffprobe ok)."
-echo "✔ Inicializando servidor HTTP local..."
+echo "✔ Inicializando MediaForge Desktop (janela nativa)..."
 
-# Launch browser in background after short delay if desktop session is detected
-if [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; then
-    (sleep 1.2 && xdg-open "http://127.0.0.1:8765" &> /dev/null) &
-fi
+exec python3 "$DIR/backend/main.py" "$@"
 
-exec python3 "$DIR/backend/main.py"

@@ -200,28 +200,48 @@ class MediaForgeHandler(BaseHTTPRequestHandler):
             task.remove_subscriber(sub_queue)
 
 
-def run_server():
+def run_server(headless: bool = False):
+    import threading
+    from backend.desktop import launch_desktop_window
+
     cfg = load_config()
     host = cfg.get("server", {}).get("host", "127.0.0.1")
     port = cfg.get("server", {}).get("port", 8765)
+    server_url = f"http://{host}:{port}"
 
     download_dir = get_download_directory()
     print("=" * 65)
     print("   🚀 MediaForge - High-Performance Audio/Video Downloader")
     print("=" * 65)
-    print(f" • Host:             http://{host}:{port}")
+    print(f" • Host Local:       {server_url}")
     print(f" • Pasta de destino: {download_dir}")
     print(f" • Motor:            yt-dlp + ffmpeg (Nativo Nobara Linux)")
+    print(f" • Modo Desktop:     {'Headless / Servidor' if headless else 'Janela Nativa'}")
     print("=" * 65)
-    print("Pressione Ctrl+C para encerrar o servidor.")
 
     server = ThreadingHTTPServer((host, port), MediaForgeHandler)
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("\n[MediaForge] Encerrando servidor com segurança...")
-        server.server_close()
+
+    if headless or (not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY")):
+        print("Executando em modo servidor (headless). Pressione Ctrl+C para encerrar.")
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("\n[MediaForge] Encerrando servidor com segurança...")
+            server.server_close()
+    else:
+        # Run HTTP server in background thread and open native desktop window
+        srv_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        srv_thread.start()
+        time.sleep(0.3)
+
+        try:
+            launch_desktop_window(server_url)
+        finally:
+            server.shutdown()
+            server.server_close()
 
 
 if __name__ == "__main__":
-    run_server()
+    is_headless = "--headless" in sys.argv or "--server-only" in sys.argv
+    run_server(headless=is_headless)
+

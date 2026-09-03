@@ -8,7 +8,7 @@ import threading
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from .core.ytdlp_wrapper import build_download_command
+from .core.ytdlp_wrapper import build_download_command, clean_media_title
 from .core.system import get_download_directory, open_in_file_manager
 
 HISTORY_FILE = Path(__file__).resolve().parent.parent / "config" / "history.json"
@@ -20,7 +20,7 @@ class DownloadTask:
         self.url = url
         self.options = options
         self.mode = options.get("mode", "audio")
-        self.title = options.get("title", "Carregando mídia...")
+        self.title = clean_media_title(options.get("title", "Carregando mídia..."))
         self.status = "queued"  # queued, downloading, processing, completed, failed
         self.progress_percent = 0.0
         self.speed = "0 KiB/s"

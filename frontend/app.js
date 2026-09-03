@@ -26,6 +26,8 @@ const elements = {
 
   // Media Inspection Panel
   mediaPanel: document.getElementById("media-panel"),
+  musicTrackBanner: document.getElementById("music-track-banner"),
+  musicTrackText: document.getElementById("music-track-text"),
   mediaThumbnail: document.getElementById("media-thumbnail"),
   mediaDuration: document.getElementById("media-duration"),
   mediaTitle: document.getElementById("media-title"),
@@ -231,41 +233,68 @@ function renderInspection(data) {
     });
   }
 
-  // Populate Audio Streams
+  // YouTube Music / Real Video Stream Validation
+  const hasRealVideo = Boolean(meta.has_real_video);
+  const isMusicTrack = Boolean(meta.is_music_track);
+
+  if (!hasRealVideo) {
+    elements.musicTrackBanner.classList.remove("hidden");
+    if (isMusicTrack) {
+      elements.musicTrackText.textContent =
+        "Faixa de áudio pura (YouTube Music) - Vídeo indisponível para este item";
+    } else {
+      elements.musicTrackText.textContent =
+        "Mídia estritamente de áudio - Nenhum stream visual/clipe disponível";
+    }
+    elements.modeVideoBtn.disabled = true;
+    elements.modeVideoBtn.title = "Vídeo indisponível para esta faixa";
+    setMode("audio");
+  } else {
+    elements.musicTrackBanner.classList.add("hidden");
+    elements.modeVideoBtn.disabled = false;
+    elements.modeVideoBtn.title = "Download em container MP4";
+    setMode(state.activeMode || "audio");
+  }
+
+  // Populate Audio Streams with Clean Badges
   elements.audioStreamSelect.innerHTML = "";
   if (data.audio_streams && data.audio_streams.length > 0) {
-    data.audio_streams.forEach((s) => {
+    data.audio_streams.forEach((s, idx) => {
       const opt = document.createElement("option");
       opt.value = s.format_id;
-      opt.textContent = `${s.label} [Codec: ${s.codec_name}]`;
-      if (s.is_preferred) {
+      if (idx === 0) {
+        opt.textContent = `★ [ORIGINAL / BIT-PERFECT] ${s.codec_name} (${s.ext.toUpperCase()}) • ${s.bitrate_label}`;
         opt.selected = true;
+      } else {
+        opt.textContent = `${s.codec_name} (${s.ext.toUpperCase()}) • ${s.bitrate_label} [${s.size_label}]`;
       }
       elements.audioStreamSelect.appendChild(opt);
     });
   } else {
     const opt = document.createElement("option");
     opt.value = "";
-    opt.textContent = "Melhor Áudio Nativo Automático (ba[ext=opus]/ba[ext=m4a]/ba)";
+    opt.textContent = "★ [ORIGINAL / BIT-PERFECT] Melhor Áudio Nativo (ba[ext=opus]/ba[ext=m4a]/ba)";
     elements.audioStreamSelect.appendChild(opt);
   }
 
-  // Populate Video Presets
+  // Populate Video Presets with Clean Badges (if real video exists)
   elements.videoResSelect.innerHTML = "";
-  if (data.video_presets && data.video_presets.length > 0) {
-    data.video_presets.forEach((p) => {
+  if (hasRealVideo && data.video_presets && data.video_presets.length > 0) {
+    data.video_presets.forEach((p, idx) => {
       const opt = document.createElement("option");
       opt.value = p.height;
-      opt.textContent = p.label;
-      if (p.is_default) {
+      if (idx === 0) {
+        opt.textContent = `★ [MELHOR QUALIDADE] ${p.label}`;
         opt.selected = true;
+      } else {
+        opt.textContent = p.label;
       }
       elements.videoResSelect.appendChild(opt);
     });
   } else {
     const opt = document.createElement("option");
     opt.value = "1080";
-    opt.textContent = "Full HD (1080p) Padrão";
+    opt.textContent = hasRealVideo ? "Full HD (1080p) Padrão" : "Vídeo Indisponível";
     elements.videoResSelect.appendChild(opt);
   }
 
@@ -289,8 +318,6 @@ function renderInspection(data) {
     elements.subLangSelect.appendChild(opt);
   }
 
-  // Default mode
-  setMode(state.activeMode);
   elements.mediaPanel.classList.remove("hidden");
   elements.mediaPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
