@@ -239,6 +239,7 @@ def run_server(headless: bool = False):
     print(f" • Modo Desktop:     {'Headless / Servidor' if headless else 'Janela Nativa'}")
     print("=" * 65)
 
+    ThreadingHTTPServer.allow_reuse_address = True
     server = ThreadingHTTPServer((host, port), MediaForgeHandler)
 
     # Iniciar verificação assíncrona não bloqueante do yt-dlp

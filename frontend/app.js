@@ -102,7 +102,7 @@ function setupEventListeners() {
     handleInspect(false);
   });
 
-  // Enter Key: Ação rápida para inspecionar e baixar automaticamente
+  // Enter Key: Ação contextual para inspecionar e decidir download
   elements.urlInput.addEventListener("keydown", async (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -110,7 +110,19 @@ function setupEventListeners() {
       if (!val) return;
 
       if (state.inspectionData && state.currentUrl === val) {
-        handleStartDownload();
+        const hasRealVideo = Boolean(
+          state.inspectionData?.metadata?.has_real_video || state.inspectionData?.metadata?.has_video
+        );
+        if (!hasRealVideo) {
+          handleStartDownload();
+        } else {
+          // Vídeo disponível: abrir o seletor para escolha do usuário
+          if (elements.optionsCollapsible) {
+            elements.optionsCollapsible.classList.remove("collapsed");
+          }
+          elements.mediaPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          showToast("Vídeo disponível. Selecione o formato desejado.", "warning");
+        }
       } else {
         await handleInspect(true);
       }
@@ -322,11 +334,29 @@ async function handleInspect(autoDownload = false) {
     state.inspectionData = data;
     renderInspection(data);
 
+    const meta = data.metadata || {};
+    const hasRealVideo = Boolean(meta.has_real_video || meta.has_video);
+
     if (autoDownload) {
-      showToast("Download automático iniciado (Áudio Puro Bit-Perfect)", "success");
-      setTimeout(() => {
-        handleStartDownload();
-      }, 120);
+      if (!hasRealVideo) {
+        // Cenário A: Mídia estritamente áudio (YouTube Music ou sem stream visual real)
+        // Disparar download de áudio puro instantaneamente
+        if (elements.optionsCollapsible) {
+          elements.optionsCollapsible.classList.add("collapsed");
+        }
+        showToast("Faixa estritamente de áudio. Download automático iniciado!", "success");
+        setTimeout(() => {
+          handleStartDownload();
+        }, 100);
+      } else {
+        // Cenário B: Vídeo real disponível
+        // Interromper o disparo cego e exibir contextualmente o seletor para escolha do usuário
+        if (elements.optionsCollapsible) {
+          elements.optionsCollapsible.classList.remove("collapsed");
+        }
+        showToast("Vídeo disponível. Selecione Áudio Puro ou Vídeo MP4 para baixar.", "warning");
+        elements.mediaPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
     }
   } catch (err) {
     showError("Erro de comunicação com o servidor local: " + err.message);
@@ -538,7 +568,9 @@ function startProgressMonitoring(taskId) {
   // Reset Progress Card UI
   elements.progressCard.classList.remove("hidden");
   elements.progressCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  elements.progBadge.className = "operational-tag";
+  elements.progBadge.style.backgroundColor = "";
+  elements.progBadge.style.color = "";
+  elements.progBadge.className = "operational-badge";
   elements.progBadge.textContent = "INICIALIZANDO";
   elements.progFilename.textContent = state.inspectionData?.metadata?.title || "Preparando...";
   elements.progressBarFill.style.width = "0%";
@@ -586,21 +618,24 @@ function updateProgressUI(task) {
   elements.progEta.textContent = task.eta || "--:--";
   elements.progSize.textContent = task.total_size || "--";
 
+  elements.progBadge.style.backgroundColor = "";
+  elements.progBadge.style.color = "";
+
   if (task.status === "downloading") {
-    elements.progBadge.className = "operational-tag";
+    elements.progBadge.className = "operational-badge";
     elements.progBadge.textContent = "BAIXANDO";
     elements.progLogLine.textContent = `Recebendo stream: ${task.speed} • ETA: ${task.eta}`;
   } else if (task.status === "processing") {
-    elements.progBadge.className = "operational-tag processing";
+    elements.progBadge.className = "operational-badge processing";
     elements.progBadge.textContent = "PROCESSANDO";
     elements.progLogLine.textContent = task.speed || "Multiplexando faixas de áudio e vídeo...";
   }
 }
 
 function onDownloadCompleted(task) {
-  elements.progBadge.className = "operational-tag";
-  elements.progBadge.style.backgroundColor = "rgba(16, 185, 129, 0.2)";
-  elements.progBadge.style.color = "var(--accent-emerald)";
+  elements.progBadge.style.backgroundColor = "";
+  elements.progBadge.style.color = "";
+  elements.progBadge.className = "operational-badge completed";
   elements.progBadge.textContent = "CONCLUÍDO";
 
   elements.progressBarFill.style.width = "100%";
@@ -616,7 +651,9 @@ function onDownloadCompleted(task) {
 }
 
 function onDownloadFailed(task) {
-  elements.progBadge.className = "operational-tag failed";
+  elements.progBadge.style.backgroundColor = "";
+  elements.progBadge.style.color = "";
+  elements.progBadge.className = "operational-badge failed";
   elements.progBadge.textContent = "FALHOU";
   elements.progSpeed.textContent = "Erro";
   elements.progLogLine.textContent = task.error || "Ocorreu uma falha durante o processo.";
