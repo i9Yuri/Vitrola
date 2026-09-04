@@ -67,6 +67,7 @@ class TestMediaForgeCore(unittest.TestCase):
         self.assertIn("-f ba[ext=opus]/ba[ext=m4a]/ba", cmd_str)
         self.assertIn("--add-metadata", cmd)
         self.assertIn("--embed-thumbnail", cmd)
+        self.assertIn("--ignore-config", cmd)
         self.assertNotIn("-x", cmd)
         self.assertNotIn("--audio-format", cmd)
         self.assertNotIn("mp3", cmd_str)
@@ -86,6 +87,7 @@ class TestMediaForgeCore(unittest.TestCase):
             subtitle_lang="pt,en",
         )
         cmd_str = " ".join(cmd)
+        self.assertIn("--ignore-config", cmd)
         self.assertIn("--merge-output-format mp4", cmd_str)
         self.assertIn("--write-subs", cmd)
         self.assertIn("--sub-langs", cmd)

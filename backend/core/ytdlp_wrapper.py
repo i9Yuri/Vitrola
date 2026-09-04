@@ -31,6 +31,7 @@ def inspect_url(url: str, timeout: int = 40) -> Dict[str, Any]:
 
     cmd = [
         YTDLP_BIN,
+        "--ignore-config",
         "--dump-single-json",
         "--no-playlist",
         "--skip-download",
@@ -347,6 +348,7 @@ def build_download_command(
     """
     cmd = [
         YTDLP_BIN,
+        "--ignore-config",
         "--no-playlist",
         "--ffmpeg-location",
         FFMPEG_BIN,

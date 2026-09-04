@@ -38,7 +38,7 @@ class YtDlpUpdater:
         if ytdlp_bin:
             try:
                 proc = subprocess.run(
-                    [ytdlp_bin, "--version"],
+                    [ytdlp_bin, "--ignore-config", "--version"],
                     capture_output=True,
                     text=True,
                     timeout=4,
