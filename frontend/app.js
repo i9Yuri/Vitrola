@@ -676,10 +676,12 @@ async function openFolder(path = null) {
     });
     const data = await res.json();
     if (!data.success) {
-      alert("Não foi possível abrir o gerenciador: " + (data.error || "Erro desconhecido"));
+      showToast("Não foi possível abrir o gerenciador: " + (data.error || "Erro desconhecido"), "error");
+    } else {
+      showToast("Local aberto no gerenciador de arquivos", "success");
     }
   } catch (err) {
-    alert("Erro ao invocar xdg-open: " + err.message);
+    showToast("Erro ao invocar xdg-open: " + err.message, "error");
   }
 }
 
@@ -705,7 +707,7 @@ function renderHistory(items) {
     return;
   }
 
-  elements.historyContainer.innerHTML = "";
+  const fragment = document.createDocumentFragment();
   items.forEach((item) => {
     const el = document.createElement("div");
     el.className = "history-item";
@@ -733,8 +735,11 @@ function renderHistory(items) {
       openFolder(item.filepath || item.filename || null);
     });
 
-    elements.historyContainer.appendChild(el);
+    fragment.appendChild(el);
   });
+
+  elements.historyContainer.innerHTML = "";
+  elements.historyContainer.appendChild(fragment);
 }
 
 // --------------------------------------------------------------------------

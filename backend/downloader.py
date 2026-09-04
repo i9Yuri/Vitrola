@@ -114,6 +114,11 @@ class DownloadManager:
         task_id = str(uuid.uuid4())[:8]
         task = DownloadTask(task_id, url, options)
         with self._lock:
+            # Poda preventiva de tarefas finalizadas para manter uso de memória mínimo
+            if len(self.tasks) > 50:
+                finished_keys = [k for k, t in self.tasks.items() if t.status in ("completed", "failed", "cancelled")]
+                for k in finished_keys[:-15]:
+                    del self.tasks[k]
             self.tasks[task_id] = task
 
         thread = threading.Thread(target=self._run_task, args=(task,), daemon=True)
