@@ -1,62 +1,53 @@
-# MediaForge 🚀
+# MediaForge 🚀 (v1.0)
 
-Aplicação desktop local/web de alta performance para extração e download de mídias (áudio puro bit-perfect sem recodificação e vídeo MP4 multi-resolução com legendas e metadados) utilizando **yt-dlp** e **FFmpeg** nativos no **Nobara Linux** (ou qualquer distribuição Linux moderna).
+Aplicação desktop nativa autônoma e de alta performance para extração e download de mídias (áudio puro bit-perfect sem recodificação e vídeo MP4 multi-resolução com legendas e metadados) utilizando **yt-dlp** e **FFmpeg** nativos no **Nobara Linux** (ou qualquer distribuição Linux moderna).
+
+Interface moderna inspirada na linguagem estética da Apple (minimalismo industrial, cantos contínuos, controles segmentados compactos e monitoramento de progresso a 60fps via SSE).
+
+---
+
+## ✨ Recursos da Versão 1.0
+
+- **Binário Standalone Portátil (`MediaForge`)**: Executável único compilado via PyInstaller — execute com duplo clique no Dolphin/Nautilus sem necessidade de instalar dependências.
+- **Janela Desktop Nativa Autônoma**: Roda diretamente em container de janela desktop nativa via QtWebEngine sem abrir navegador externo.
+- **Isolamento Total do yt-dlp (`--ignore-config`)**: Garante que diretivas globais host (como `-x`) não interfiram na escolha entre Áudio e Vídeo.
+- **Fluxo Rápido com Tecla `Enter`**:
+  - *Mídia estritamente de áudio (YouTube Music)*: Disparo automático instantâneo do melhor áudio bit-perfect sem fricção.
+  - *Conteúdo com vídeo disponível*: Pausa contextual para escolha do formato desejado (`Áudio Puro` vs `Vídeo MP4`).
+- **Resolução de Capas em Alta Resolução**: Tratamento inteligente contra requisições 404 da CDN do Google, priorizando JPEGs de qualidade máxima.
+- **Atualizador em Segundo Plano**: Monitoramento assíncrono e não-bloqueante de novas versões do motor `yt-dlp` com opção de disparo manual na interface.
 
 ---
 
 ## 🛠️ Arquitetura & Tecnologias
 
-- **Backend:** Python 3.10+ (`ThreadingHTTPServer` com Server-Sent Events nativos). Sem dependências pesadas externas.
-- **Motores CLI:** `yt-dlp` (extração de streams e metadados com suporte a runtime Node.js para EJS) e `ffmpeg` (multiplexação sem perdas de container MP4, capas e legendas).
-- **Frontend:** Design System industrial sóbrio sem frameworks pesados, paleta escura (slate/chumbo `#0f172a`, destaque em verde esmeralda `#10b981`, azul técnico `#0284c7` e avisos em âmbar `#f59e0b`), streaming de progresso reativo a 60fps via SSE (`EventSource`).
-- **Integração de Sistema:** Integração direta com o gerenciador de arquivos padrão do Nobara Linux (Dolphin / Nautilus) via `xdg-open`.
-
----
-
-## 📁 Estrutura do Projeto
-
-```
-Music Downloader/
-├── backend/
-│   ├── main.py               # Servidor HTTP com REST API e SSE streaming
-│   ├── downloader.py         # Gerenciador assíncrono de tarefas e histórico
-│   └── core/
-│       ├── __init__.py
-│       ├── system.py         # Resolução de caminhos, sanitização ext4 e xdg-open
-│       └── ytdlp_wrapper.py  # Wrapper robusto para yt-dlp (--dump-single-json, download)
-├── frontend/
-│   ├── index.html            # Estrutura semântica e cards operacionais
-│   ├── styles.css            # Design System industrial e responsivo
-│   └── app.js                # Lógica reativa, cliente SSE e controles dinâmicos
-├── config/
-│   ├── config.json           # Diretórios padrão, portas e preferências de codec
-│   └── history.json          # Histórico persistente de downloads (gerado)
-├── downloads/                # Diretório local de fallback (gitignored)
-├── tests/
-│   └── test_pipeline.py      # Suíte de testes unitários e validação com ffprobe
-├── run.sh                    # Launcher executável no Nobara Linux
-├── .gitignore                # Regras de isolamento Git
-└── README.md
-```
+- **Backend:** Python 3.10+ (`ThreadingHTTPServer` com Server-Sent Events nativos).
+- **GUI:** Container nativo PySide6 (QtWebEngineWidgets) com fallback headless para navegador.
+- **Motores CLI:** `yt-dlp` (isolado) e `ffmpeg` (multiplexação sem perdas, capas e legendas).
+- **Frontend:** Design System escuro inspirado na Apple, paleta industrial sóbria, micro-interações táteis e streaming reativo SSE (`EventSource`).
+- **Integração de Sistema:** Suporte nativo ao gerenciador de arquivos (Dolphin / Nautilus) via `xdg-open`.
 
 ---
 
 ## 🚀 Como Executar
 
-### 1. Inicialização Automática (Recomendada)
-Execute o script launcher:
+### 1. Executável Portátil Standalone (Recomendado para Usuários)
+Baixe o arquivo `MediaForge` da [seção de Releases](https://github.com) e execute com duplo clique ou pelo terminal:
 ```bash
-./run.sh
+chmod +x MediaForge
+./MediaForge
 ```
-O launcher verifica os binários do sistema (`python3`, `yt-dlp`, `ffmpeg`, `ffprobe`), inicia o servidor na porta `8765` e abre o navegador automaticamente no Nobara Linux.
 
-### 2. Inicialização Manual
+### 2. Modo Desenvolvimento (Instantâneo)
 ```bash
-python3 backend/main.py
+./dev.sh
 ```
-Em seguida, acesse no seu navegador:
-```
-http://127.0.0.1:8765
+
+### 3. Compilação do Executável Portátil
+Para compilar um novo binário único independente:
+```bash
+./build.sh
+# O executável será gerado em dist/MediaForge
 ```
 
 ---
