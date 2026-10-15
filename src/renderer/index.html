@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Maré — Baixador de Áudio e Vídeo</title>
+  <title>Vitrola — Baixador de Áudio e Vídeo</title>
   
   <!-- Prevenção imediata de FOUC -->
   <script>
     (function(){
       try {
-        var s = localStorage.getItem('user_theme_preferences');
+        var s = localStorage.getItem('vitrola_settings') || localStorage.getItem('user_theme_preferences');
         if (s) {
           var p = JSON.parse(s);
           var r = document.documentElement;
@@ -61,7 +61,7 @@
   </svg>
 
   <!-- Janela Principal Frameless -->
-  <div class="window" role="application" aria-label="Maré, baixador de música e vídeo">
+  <div class="window" role="application" aria-label="Vitrola, baixador de música e vídeo">
 
     <!-- Titlebar Customizada Integrada -->
     <header class="titlebar">
@@ -69,7 +69,7 @@
         <span class="mark" aria-hidden="true">
           <i style="height:8px"></i><i style="height:15px"></i><i style="height:20px"></i><i style="height:12px"></i><i style="height:6px"></i>
         </span>
-        maré
+        vitrola
       </div>
       <div class="tb-actions">
         <button class="tb-menu" aria-label="Menu de Opções"><svg class="i"><use href="#i-menu"/></svg></button>
@@ -105,7 +105,7 @@
             <svg class="i"><use href="#i-folder"/></svg>
             <div>
               <small>Salvando em</small>
-              <strong id="dest-path">~/Música/Maré</strong>
+              <strong id="dest-path">~/Música/Vitrola</strong>
             </div>
           </button>
           <div id="sidebar-engine" class="engine" title="Clique para abrir painel de governança do yt-dlp">
@@ -319,6 +319,18 @@
               <div id="ytdlp-logs" class="ytdlp-logs">Aguardando verificação do executável local...</div>
             </div>
           </div>
+
+          <!-- Sobre o Vitrola -->
+          <div class="setting-group">
+            <label>Sobre o Vitrola</label>
+            <div class="about-app-box" style="padding: 12px 14px; background: var(--surface); border-radius: 12px; border: 1px solid var(--line); font-size: 13px; line-height: 1.5; color: var(--muted)">
+              <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">Vitrola v2.3.0</div>
+              <div>Baixador de mídia de alta performance (Áudio e Vídeo) integrado ao yt-dlp e FFmpeg.</div>
+              <div style="margin-top: 8px;">
+                <a href="https://github.com/i9Yuri/Vitrola" target="_blank" rel="noreferrer" style="color: var(--accent); text-decoration: none; font-weight: 550;">github.com/i9Yuri/Vitrola</a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -333,7 +345,7 @@
         <div class="modal-content" style="gap: 16px">
           <div class="setting-group">
             <label>Diretório Atual</label>
-            <div id="dest-modal-path" style="padding: 10px 14px; background: var(--surface); border-radius: 12px; border: 1px solid var(--line); font-size: 13px; font-weight: 550; word-break: break-all; color: var(--text)">~/Música/Maré</div>
+            <div id="dest-modal-path" style="padding: 10px 14px; background: var(--surface); border-radius: 12px; border: 1px solid var(--line); font-size: 13px; font-weight: 550; word-break: break-all; color: var(--text)">~/Música/Vitrola</div>
           </div>
           <div style="display: grid; gap: 10px">
             <button id="btn-dest-open-folder" class="btn-primary" style="justify-content: center; height: 42px">

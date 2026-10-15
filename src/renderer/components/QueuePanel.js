@@ -1,5 +1,5 @@
 /**
- * MARÉ - COMPONENTE QUEUE PANEL (QueuePanel.js)
+ * VITROLA - COMPONENTE QUEUE PANEL (QueuePanel.js)
  * Painel de fila de downloads com barras determinísticas de forma de onda.
  */
 

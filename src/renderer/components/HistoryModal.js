@@ -1,5 +1,5 @@
 /**
- * MARÉ - COMPONENTE DE HISTÓRICO (HistoryModal.js)
+ * VITROLA - COMPONENTE DE HISTÓRICO (HistoryModal.js)
  * Deduplicação de registros, contador cumulativo, sanitização de datas e validação no disco.
  */
 

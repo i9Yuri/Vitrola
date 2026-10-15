@@ -1,5 +1,5 @@
 /**
- * MARÉ - MANIPULADOR IPC / API YT-DLP (ytdlp-ipc.js)
+ * VITROLA - MANIPULADOR IPC / API YT-DLP (ytdlp-ipc.js)
  * Manipuladores para checagem de versão e execução remota/local de auto-update.
  */
 

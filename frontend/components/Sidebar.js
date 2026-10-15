@@ -1,5 +1,5 @@
 /**
- * MARÉ - COMPONENTE SIDEBAR (Sidebar.js)
+ * VITROLA - COMPONENTE SIDEBAR (Sidebar.js)
  * Navegação simplificada (Baixar, Histórico, Ajustes) e acoplamento do modal de destino.
  */
 

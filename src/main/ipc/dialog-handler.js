@@ -1,5 +1,5 @@
 /**
- * MARÉ - MANIPULADOR DE DIÁLOGOS NATIVOS DO SO (dialog-handler.js)
+ * VITROLA - MANIPULADOR DE DIÁLOGOS NATIVOS DO SO (dialog-handler.js)
  * Seleção de diretório nativo e revelação no gerenciador de arquivos (xdg-open / Dolphin / Nautilus).
  */
 

@@ -1,5 +1,5 @@
 """
-Maré - Asynchronous yt-dlp Background Updater
+Vitrola - Asynchronous yt-dlp Background Updater
 Provides non-blocking version checks, concurrency safety with downloads,
 and manual update triggers.
 """
@@ -66,7 +66,7 @@ class YtDlpUpdater:
                 req = urllib.request.Request(
                     url,
                     headers={
-                        "User-Agent": "Mare-Desktop/2.2.0",
+                        "User-Agent": "Vitrola-Desktop/2.3.0",
                         "Accept": "application/vnd.github.v3+json",
                     },
                 )

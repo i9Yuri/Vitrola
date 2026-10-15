@@ -1,6 +1,19 @@
 /**
- * MARÉ - ESQUEMA DE TIPOS COMPARTILHADOS (types.ts)
+ * VITROLA - ESQUEMA DE TIPOS COMPARTILHADOS (types.ts)
  */
+
+export interface HistoryRecord {
+  id: string;
+  mediaKey: string;
+  title: string;
+  artist?: string;
+  format: string;
+  quality: string;
+  sizeBytes: number;
+  filePath: string;
+  completedAt: string;
+  downloadCount: number;
+}
 
 export interface HistoryItem {
   id: string;

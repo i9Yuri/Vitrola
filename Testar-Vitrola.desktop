@@ -1,9 +1,9 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Maré
-Comment=Baixador de mídia de alta performance (Áudio e Vídeo)
-Exec=/home/yuri/Desktop/Yuri/Projects/Music Downloader/run.sh
+Name=Testar Vitrola
+Comment=Executa testes e abre a interface do Vitrola
+Exec=/home/yuri/Desktop/Yuri/Projects/Music Downloader/testar.sh
 Path=/home/yuri/Desktop/Yuri/Projects/Music Downloader
 Icon=applications-multimedia
 Terminal=false

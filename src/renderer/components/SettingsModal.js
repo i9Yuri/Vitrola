@@ -1,5 +1,5 @@
 /**
- * MARÉ - COMPONENTE SETTINGS MODAL (SettingsModal.js)
+ * VITROLA - COMPONENTE SETTINGS MODAL (SettingsModal.js)
  * Painel de Ajustes de tema (Claro, Slate, AMOLED), acentos e governança yt-dlp.
  */
 

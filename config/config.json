@@ -4,7 +4,7 @@
     "port": 8765
   },
   "storage": {
-    "download_dir": "~/Música/Maré",
+    "download_dir": "~/Música/Vitrola",
     "fallback_dir": "downloads"
   },
   "defaults": {

@@ -1,5 +1,5 @@
 /**
- * MARÉ - CONTRATOS DE TIPAGEM E COMUNICAÇÃO IPC / HTTP
+ * VITROLA - CONTRATOS DE TIPAGEM E COMUNICAÇÃO IPC / HTTP
  */
 
 export interface MediaMetadata {

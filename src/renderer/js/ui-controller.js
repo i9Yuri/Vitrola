@@ -1,5 +1,5 @@
 /**
- * MARÉ - CONTROLADOR DE INTERFACE (ui-controller.js)
+ * VITROLA - CONTROLADOR DE INTERFACE (ui-controller.js)
  * Orquestração de eventos, busca com yt-dlp, fila reativa e waveform.
  */
 
@@ -342,11 +342,28 @@ class UIController {
   // --------------------------------------------------------------------------
   async loadConfig() {
     try {
-      // Migração suave de configurações legadas no localStorage se presentes
+      // Migração padronizada de chaves legadas e expurgo de resíduos
       try {
-        const legacyMF = localStorage.getItem("mediaforge_config") || localStorage.getItem("fita_config");
-        if (legacyMF && !localStorage.getItem("mare_config")) {
-          localStorage.setItem("mare_config", legacyMF);
+        const legacyKeys = ["mediaforge_settings", "mediaforge_config", "fita_config", "mare_settings", "mare_config"];
+        let legacyData = null;
+        for (const k of legacyKeys) {
+          const item = localStorage.getItem(k);
+          if (item && !legacyData) legacyData = item;
+          localStorage.removeItem(k);
+        }
+        if (legacyData && !localStorage.getItem("vitrola_settings")) {
+          localStorage.setItem("vitrola_settings", legacyData);
+        }
+
+        const legacyHist = ["mediaforge_history", "mare_history"];
+        let histData = null;
+        for (const h of legacyHist) {
+          const item = localStorage.getItem(h);
+          if (item && !histData) histData = item;
+          localStorage.removeItem(h);
+        }
+        if (histData && !localStorage.getItem("vitrola_history")) {
+          localStorage.setItem("vitrola_history", histData);
         }
       } catch (_) {}
 
@@ -354,7 +371,7 @@ class UIController {
       const data = await res.json();
       if (data.success && data.config) {
         this.config = data.config;
-        const dir = data.config.effective_download_dir || data.config.storage?.download_dir || "~/Música/Maré";
+        const dir = data.config.effective_download_dir || data.config.storage?.download_dir || "~/Música/Vitrola";
         if (this.destPath) {
           this.destPath.textContent = dir.replace(/\/home\/[^/]+/, "~");
           this.destPath.title = dir;
@@ -384,7 +401,7 @@ class UIController {
   }
 
   openDestModal() {
-    const current = this.destPath?.title || "~/Música/Maré";
+    const current = this.destPath?.title || "~/Música/Vitrola";
     if (this.destModalPath) this.destModalPath.textContent = current;
     this.openModal(this.modalDest);
   }

@@ -1,72 +1,132 @@
-# Maré 🌊 — Baixador de Áudio e Vídeo de Alta Performance
+# Vitrola 🎶 — Baixador de Áudio e Vídeo de Alta Performance
 
-Aplicação desktop nativa autônoma e de alta performance para extração e download de mídias (áudio bit-perfect sem recodificação desnecessária e vídeo MP4 multi-resolução com legendas e metadados) utilizando **yt-dlp** e **FFmpeg** nativos no **Nobara Linux** (ou qualquer distribuição Linux moderna).
+Aplicação desktop moderna, autônoma e de alto desempenho para extração e download de mídias (áudio de alta fidelidade sem perdas desnecessárias e vídeo MP4 multi-resolução com legendas e metadados) desenvolvida para o ecossistema desktop Linux (otimizada para Nobara Linux / KDE Plasma) e cross-platform, integrando de forma nativa os motores **yt-dlp** e **FFmpeg**.
 
-> **Aviso de Escopo:** O projeto **Maré** é estritamente focado no download e processamento de mídia de alta performance. Ele é completamente segregado do projeto irmão **JustPlay** (tocador multimídia).
-> **Repositório Oficial:** [https://github.com/i9Yuri/MediaForge](https://github.com/i9Yuri/MediaForge)
-
----
-
-## ✨ Recursos da Versão 2.2.0
-
-- **Identidade Consolidada (Maré)**: Interface elegante e minimalista com motor de temas (Claro, Slate, AMOLED #000000) e acentos configuráveis.
-- **Janela Frameless Nativa**: Integração fluida à área de trabalho sem camadas aninhadas ("janela dentro de janela"), com controles integrados de minimizar, maximizar e fechar.
-- **Histórico Agrupado Inteligente**: Deduplicação automática com badges numéricos multiplicadores (ex: `2x`), datas em formato ISO local seguro e verificação prévia no sistema de arquivos antes de abrir com Dolphin / Nautilus.
-- **Gestão de Pasta de Destino ("Salvando em")**: Modal contextual que permite inspecionar o diretório atual, abrir diretamente no gerenciador de arquivos ou selecionar uma nova pasta nativa via Zenity ou KDialog. Padrão sugerido: `~/Música/Maré`.
-- **Binário Standalone Portátil (`dist/Mare`)**: Executável único compilado via PyInstaller — execute com duplo clique no Dolphin/Nautilus sem necessidade de instalar dependências.
-- **Lançador Rápido de Testes (`Testar-Mare.desktop`)**: Lançador na pasta do projeto com duplo clique para testes imediatos e abertura da interface.
-- **Isolamento Total do yt-dlp (`--ignore-config`)**: Garante que diretivas globais host não interfiram na extração.
-- **Atualizador em Segundo Plano**: Telemetria assíncrona e governança do motor `yt-dlp` com opção de atualização in-place na interface.
+> **Repositório Oficial Canônico:** [https://github.com/i9Yuri/Vitrola](https://github.com/i9Yuri/Vitrola)  
+> **Delimitação de Escopo & Projeto Irmão:** O **Vitrola** é estritamente dedicado à esteira de extração, download e pós-processamento de fluxos multimídia. Ele opera com total segregação e independência em relação ao tocador multimídia irmão **JustPlay**.
 
 ---
 
-## 🛠️ Arquitetura & Tecnologias
+## ✨ Recursos e Funcionalidades
 
-- **Backend:** Python 3.10+ (`ThreadingHTTPServer` com Server-Sent Events nativos).
-- **GUI Desktop:** Container nativo frameless via PySide6 (QtWebEngineWidgets) com fallback headless para navegador.
-- **Motores CLI:** `yt-dlp` (isolado) e `ffmpeg` (multiplexação sem perdas, capas e legendas).
-- **Frontend:** Vanilla JS modular, design responsivo em grid (`208px 1fr`, `340px` fila persistente), temas via CSS Custom Properties.
-- **Integração de Sistema:** Suporte nativo ao gerenciador de arquivos (Dolphin / Nautilus) via `xdg-open`, diálogos com `zenity`/`kdialog`.
+### 1. Janela Nativa Frameless (Edge-to-Edge)
+- **Topologia Sem Moldura**: Eliminação de barras de janelas aninhadas ou decorativas redundantes do sistema operacional.
+- **Titlebar Integrada**: Controles táteis nativos de minimizar, maximizar/restaurar e fechar conectados diretamente via IPC/API de janela nativa, com arraste fluido no cabeçalho superior.
+- **Tipografia Grotesque**: Interface refinada em `Bricolage Grotesque` e ícones SVG minimalistas com micro-interações táteis.
+
+### 2. Modos Especializados de Download
+- **Modo Áudio Puro**:
+  - Extração em formatos populares e bit-perfect: **MP3 (320 kbps, 256 kbps, 128 kbps)**, **M4A (AAC)**, **OPUS** e **FLAC**.
+  - Embutimento automático de metadados completos (ID3 / Vorbis comment) e artes de álbum em resolução máxima com tratamento contra erros de CDN.
+- **Modo Vídeo Multi-Resolução**:
+  - Download em **MP4**, **WEBM** e **MKV** com seleção de resolução (1080p, 720p, 480p, 360p).
+  - Multiplexação sem perdas via FFmpeg unindo os melhores streams de áudio e vídeo disponíveis.
+  - Suporte a legendas embutidas selecionáveis (`pt,en`).
+
+### 3. Waveform Reativa de Progresso
+- **Envelope Dinâmico de 44 Barras**: Renderização determinística de waveform vertical vinculada ao ID e estado de cada transferência.
+- **Monitoramento em Tempo Real**: Progresso contínuo a 60fps via Server-Sent Events (SSE) com pulso dinâmico `.on.edge` e estatísticas de taxa de transferência (KiB/s, MiB/s) e tempo estimado (ETA).
+
+### 4. Motor de Temas e Acentos
+- **Modos de Superfície**:
+  - **Modo Claro (Light)**
+  - **Modo Escuro Neutro (Slate)**
+  - **Modo Escuro AMOLED (Pure Black `#000000`)**
+- **Cores de Acento Dinâmicas e Fixas**: Acento dinâmico inteligente (Âmbar para áudio, Violeta para vídeo) ou paletas configuráveis: Âmbar, Violeta, Esmeralda, Carmim e Ciano, com zero layout shift.
+- **Bootstrap Anti-FOUC**: Injeção síncrona no cabeçalho do documento prevenindo qualquer flash de conteúdo não estilizado.
+
+### 5. Histórico Inteligente com Deduplicação
+- **Agrupamento Automático**: Identificação por chave de mídia (`mediaKey`) que agrupa downloads repetidos em um único cartão com badge multiplicador (ex.: `2x`).
+- **Validação de Integridade no Sistema de Arquivos**: Checagem de existência do arquivo antes de invocar o gerenciador (Dolphin / Nautilus), notificando caso a mídia tenha sido renomeada ou movida.
+- **Datas em Formato Seguro**: Formatação regional defensiva evitando registros inválidos.
+
+### 6. Governança e Telemetria do yt-dlp
+- **Verificação Assíncrona de Versão**: Telemetria em segundo plano com indicador de integridade operacional.
+- **Atualização In-Place**: Botão dedicado de atualização remota do executável do yt-dlp com buffer de logs ao vivo na interface.
+- **Isolamento de Diretivas (`--ignore-config`)**: Blindagem contra configurações globais host que possam interferir na extração.
 
 ---
 
-## 🚀 Como Executar
+## 🛠️ Arquitetura do Sistema
 
-### 1. Teste Rápido (Duplo Clique)
-Dê um duplo clique em `Testar-Mare.desktop` ou execute no terminal:
+```
+Vitrola/
+├── backend/                  # Servidor e Runner Desktop
+│   ├── main.py               # Servidor HTTP Threading e SSE (/api/*)
+│   ├── desktop.py            # Janela nativa frameless (PySide6 / pywebview)
+│   ├── downloader.py         # Orquestrador de tarefas e fila de downloads
+│   └── core/                 # Wrappers yt-dlp, FFmpeg, updater e sistema
+├── src/                      # Código-Fonte Modular
+│   ├── main/                 # Processo Principal / IPC Electron
+│   │   ├── main.js           # Ponto de entrada Electron e registro IPC
+│   │   └── ipc/              # Handlers de janela, arquivos e yt-dlp
+│   ├── renderer/             # Frontend e Interface
+│   │   ├── index.html        # Estrutura DOM e Titlebar
+│   │   ├── components/       # Componentes modulares (TitleBar, Sidebar, Modals)
+│   │   ├── js/               # Controladores (UI, Temas, Governança)
+│   │   └── styles/           # CSS desacoplado (tema, janela, layout)
+│   └── shared/               # Constantes globais e tipagens
+├── config/                   # Configuração e esquemas padrão
+├── tests/                    # Suíte de testes unitários automatizados
+├── testar.sh                 # Script de execução rápida com testes
+├── dev.sh                    # Inicializador em modo de desenvolvimento
+├── run.sh                    # Lançador desktop
+└── build.sh                  # Compilador de binário único portátil
+```
+
+---
+
+## 🚀 Guia de Instalação e Execução
+
+### 1. Clonar o Repositório
+```bash
+git clone https://github.com/i9Yuri/Vitrola.git
+cd Vitrola
+```
+
+### 2. Pré-requisitos do Sistema (Linux / Nobara / Debian / Fedora)
+Certifique-se de que as ferramentas essenciais estão instaladas no PATH:
+- **Python 3.10+** (com `PySide6` para janela nativa desktop)
+- **yt-dlp**
+- **FFmpeg** e **FFprobe**
+
+### 3. Execução Rápida para Testes
+Dê um duplo clique no arquivo `Testar-Vitrola.desktop` na pasta do projeto ou execute no terminal:
 ```bash
 ./testar.sh
 ```
 
-### 2. Modo Desenvolvimento
+### 4. Modo de Desenvolvimento
 ```bash
 ./dev.sh
 ```
 
-### 3. Compilação do Executável Portátil Standalone
-Para compilar o binário único independente:
+### 5. Compilação do Executável Standalone Portátil
+Para gerar um executável único e independente em `dist/Vitrola`:
 ```bash
 ./build.sh
-# O executável será gerado em dist/Mare
 ```
 
 ---
 
-## 🎯 Pipelines de Download
+## 🧪 Suíte de Testes Automatizados
 
-### 1. Modo Áudio
-- **Extração de Alta Fidelidade**: Coleta a melhor trilha sonora nativa (`Opus ~160kbps`, `AAC/M4A ~128kbps` ou `MP3 320kbps`) com multiplexação limpa.
-- **Metadados e Capas**: Embutimento automático de tags ID3 / Vorbis comment e arte do álbum em alta resolução.
-
-### 2. Modo Vídeo
-- **Vídeo MP4 Multiplexado**: Seleção contextual de qualidade (1080p, 720p, 480p, etc.) com união automática de áudio e vídeo via FFmpeg.
-- **Legendas Embutidas**: Suporte a legendas multilíngues (`pt,en`) integradas diretamente no container MP4.
-
----
-
-## 🧪 Testes Automatizados
-
-Para rodar a suíte completa de testes unitários:
+A integridade do pipeline de download, flags operacionais do yt-dlp, multiplexação FFmpeg e sanitização de metadados são validadas via unittest:
 ```bash
 python3 -m unittest discover tests
 ```
+
+---
+
+## 📜 Histórico & Roadmap
+
+- **v1.0**: Pipeline inicial de download de mídia portátil com yt-dlp e FFmpeg.
+- **v2.0**: Redesign visual completo com grid 208px/1fr, waveform progress e motor de temas.
+- **v2.1**: Janela nativa frameless com controles integrados, histórico agrupado inteligente com verificação no disco e modal contextual de destino.
+- **v2.2**: Padronização de manifestos, consolidação e governança de armazenamento.
+- **v2.3 (Atual)**: Rebranding definitivo para **Vitrola**, redefinição do repositório oficial para `https://github.com/i9Yuri/Vitrola`, formalização dos contratos IPC de metadados e expurgo completo de referências legadas.
+
+---
+
+## 📄 Licença
+Distribuído sob a licença MIT. Consulte `LICENSE` para mais detalhes.

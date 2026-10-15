@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Maré - Standalone Portable Single-File Builder
-# Generates a self-contained executable in dist/Mare using PyInstaller
+# Vitrola - Standalone Portable Single-File Builder
+# Generates a self-contained executable in dist/Vitrola using PyInstaller
 # ==============================================================================
 
 set -e
@@ -10,7 +10,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 
 echo "================================================================="
-echo "   📦 Maré - Standalone Portable Executable Builder"
+echo "   📦 Vitrola - Standalone Portable Executable Builder"
 echo "================================================================="
 
 # 1. Check Python
@@ -27,7 +27,7 @@ fi
 
 # 3. Clean previous build artifacts
 echo "🧹 Limpando artefatos anteriores..."
-rm -rf build dist MediaForge.spec Mare.spec
+rm -rf build dist Vitrola.spec Mare.spec MediaForge.spec
 
 # 4. Build single-file executable
 echo "🔨 Compilando binário único independente (--onefile)..."
@@ -35,7 +35,7 @@ echo "🔨 Compilando binário único independente (--onefile)..."
 python3 -m PyInstaller \
     --onefile \
     --noconsole \
-    --name "Mare" \
+    --name "Vitrola" \
     --add-data "frontend:frontend" \
     --add-data "config:config" \
     --hidden-import "PySide6.QtWebEngineWidgets" \
@@ -46,12 +46,12 @@ python3 -m PyInstaller \
     backend/main.py
 
 # 5. Set executable permissions
-chmod +x dist/Mare
+chmod +x dist/Vitrola
 
 echo "================================================================="
 echo "   🎉 SUCESSO! Executável único compilado com êxito!"
 echo "================================================================="
-echo " • Binário portátil: dist/Mare"
-echo " • Tamanho:          $(du -h dist/Mare | cut -f1)"
-echo " • Como executar:    ./dist/Mare (ou duplo clique no Dolphin/Nautilus)"
+echo " • Binário portátil: dist/Vitrola"
+echo " • Tamanho:          $(du -h dist/Vitrola | cut -f1)"
+echo " • Como executar:    ./dist/Vitrola (ou duplo clique no Dolphin/Nautilus)"
 echo "================================================================="

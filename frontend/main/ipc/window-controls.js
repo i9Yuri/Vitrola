@@ -1,5 +1,5 @@
 /**
- * MARÉ - CONTROLE DE JANELA NATIVA (window-controls.js)
+ * VITROLA - CONTROLE DE JANELA NATIVA (window-controls.js)
  * Manipulação de minimizar, maximizar/restaurar e fechar via processo nativo/API.
  */
 

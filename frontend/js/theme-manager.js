@@ -1,9 +1,9 @@
 /**
- * MARÉ - MOTOR DE TEMAS (theme-manager.js)
+ * VITROLA - MOTOR DE TEMAS (theme-manager.js)
  * Gerencia Modos de Superfície (Claro, Slate, AMOLED) e Acentos Dinâmicos.
  */
 
-const STORAGE_KEY = "user_theme_preferences";
+const STORAGE_KEY = "vitrola_settings";
 
 const DEFAULT_PREFERENCES = {
   themeMode: "dark", // "dark" | "light" | "dark-amoled"
@@ -18,9 +18,24 @@ class ThemeManager {
 
   loadPreferences() {
     try {
+      // Migração de chaves legadas
+      const legacyKeys = ["user_theme_preferences", "mediaforge_settings", "mediaforge_config", "mare_settings", "mare_config"];
+      let legacyData = null;
+      for (const k of legacyKeys) {
+        const item = localStorage.getItem(k);
+        if (item && !legacyData) {
+          try { legacyData = JSON.parse(item); } catch (_) {}
+        }
+        localStorage.removeItem(k); // expurgar chaves legadas
+      }
+
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         return { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) };
+      }
+      if (legacyData) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(legacyData));
+        return { ...DEFAULT_PREFERENCES, ...legacyData };
       }
     } catch (e) {
       console.warn("[ThemeManager] Erro ao ler preferências:", e);

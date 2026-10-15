@@ -1,5 +1,5 @@
 /**
- * MARÉ - COMPONENTE TITLEBAR (TitleBar.js)
+ * VITROLA - COMPONENTE TITLEBAR (TitleBar.js)
  * Controles de janela desacoplados, branding e ações de menu.
  */
 

@@ -1,1 +1,1 @@
-"""Core wrappers and system utilities for Maré."""
+"""Core wrappers and system utilities for Vitrola."""

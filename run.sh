@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Maré - Launcher Script for Nobara Linux / POSIX
+# Vitrola - Launcher Script for Nobara Linux / POSIX
 # ==============================================================================
 
 set -e
@@ -9,7 +9,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 
 echo "================================================================="
-echo "   🌊 Maré - Baixador de Áudio e Vídeo de Alta Performance"
+echo "   🎶 Vitrola - Baixador de Áudio e Vídeo de Alta Performance"
 echo "================================================================="
 
 # Check requirements
@@ -21,6 +21,6 @@ for bin in python3 yt-dlp ffmpeg ffprobe; do
 done
 
 echo "✔ Ambiente Nobara Linux verificado (python3, yt-dlp, ffmpeg, ffprobe ok)."
-echo "✔ Inicializando Maré Desktop (janela nativa)..."
+echo "✔ Inicializando Vitrola Desktop (janela nativa)..."
 
 exec python3 "$DIR/backend/main.py" "$@"

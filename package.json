@@ -1,8 +1,8 @@
 {
-  "name": "mare",
-  "productName": "Maré",
-  "version": "2.2.0",
-  "description": "Baixador de mídia de alta performance (Áudio e Vídeo) integrado ao yt-dlp e ffmpeg",
+  "name": "vitrola",
+  "productName": "Vitrola",
+  "version": "2.3.0",
+  "description": "Baixador de mídia de alta performance (Áudio e Vídeo) para desktop integrado ao yt-dlp e FFmpeg",
   "main": "src/main/main.js",
   "scripts": {
     "start": "bash dev.sh",
@@ -11,10 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/i9Yuri/MediaForge.git"
+    "url": "https://github.com/i9Yuri/Vitrola.git"
+  },
+  "homepage": "https://github.com/i9Yuri/Vitrola#readme",
+  "bugs": {
+    "url": "https://github.com/i9Yuri/Vitrola/issues"
   },
   "keywords": [
-    "mare",
+    "vitrola",
     "downloader",
     "yt-dlp",
     "ffmpeg",

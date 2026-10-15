@@ -2,6 +2,24 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.3.0] - 2026-10-15
+
+### Rebranding Definitivo & Sincronização Canônica
+- **Rebranding Integral para Vitrola (`vitrola`)**:
+  - Consolidação formal e definitiva da identidade sob a marca **Vitrola** (slug: `vitrola`).
+  - Redefinição do repositório canônico para [https://github.com/i9Yuri/Vitrola](https://github.com/i9Yuri/Vitrola).
+  - Erradicação de nomenclaturas residuais anteriores nos manifestos, UI, backend e documentação oficial.
+  - Reafirmação da segregação arquitetural estrita em relação ao tocador irmão JustPlay.
+- **Contratos IPC e Metadados Globais**:
+  - Implementação do manifesto oficial `package.json` com campos `repository`, `homepage` e `bugs`.
+  - Formalização dos contratos IPC de metadados (`system:getAppMetadata`) e manipulação de destino (`storage:getDefaultDirectory`, `storage:openTargetDirectory`, `storage:updateTargetDirectory`).
+  - Tipagem unificada de histórico `HistoryRecord` e constantes globais `APP_CONFIG`.
+- **Persistência de Dados e Expurgos**:
+  - Migração padronizada de chaves de `localStorage` para `vitrola_settings` e `vitrola_history`, com expurgo de chaves antigas.
+  - Migração de arquivos de configuração para `~/.config/vitrola/` com fallback recursivo para `~/Música/Vitrola`.
+- **Ambiente Operacional e Compilação**:
+  - Títulos de janela, executável `dist/Vitrola` e lançadores de desktop `Testar-Vitrola.desktop` e `vitrola.desktop`.
+
 ## [2.2.0] - 2026-10-15
 
 ### Rebranding & Consolidação Arquitetural

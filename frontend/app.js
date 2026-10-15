@@ -1,5 +1,5 @@
 /**
- * Maré JS Entry Point
+ * Vitrola JS Entry Point
  */
 import { uiController } from "./js/ui-controller.js";
 import { themeManager } from "./js/theme-manager.js";

@@ -1,11 +1,23 @@
 /**
- * MARÉ - METADADOS GLOBAIS E CONSTANTES DO SISTEMA
+ * VITROLA - METADADOS GLOBAIS E CONSTANTES DO SISTEMA
  */
 
+export const APP_CONFIG = {
+  NAME: 'Vitrola',
+  SLUG: 'vitrola',
+  REPOSITORY: 'https://github.com/i9Yuri/Vitrola',
+  DEFAULT_DOWNLOAD_DIR: 'Vitrola',
+  STORAGE_KEYS: {
+    SETTINGS: 'vitrola_settings',
+    HISTORY: 'vitrola_history'
+  },
+  VERSION: '2.3.0'
+};
+
 export const APP_METADATA = {
-  NAME: 'Maré',
-  SLUG: 'mare',
-  REPO_URL: 'https://github.com/i9Yuri/MediaForge',
-  DEFAULT_FOLDER_NAME: 'Maré',
-  VERSION: '2.2.0'
+  NAME: APP_CONFIG.NAME,
+  SLUG: APP_CONFIG.SLUG,
+  REPO_URL: APP_CONFIG.REPOSITORY,
+  DEFAULT_FOLDER_NAME: APP_CONFIG.DEFAULT_DOWNLOAD_DIR,
+  VERSION: APP_CONFIG.VERSION
 };
