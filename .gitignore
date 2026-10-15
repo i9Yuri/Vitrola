@@ -18,3 +18,4 @@ config/history.json
 build/
 dist/
 *.spec
+_dev/

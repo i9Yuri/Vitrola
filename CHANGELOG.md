@@ -2,6 +2,22 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.3.2] - 2026-10-15
+
+### Correção de Falha de Inicialização (Crash on Boot) e Estabilização do Electron
+- **Interceptação Defensiva de Exceções Globais**:
+  - Acoplamento de listeners para `uncaughtException` e `unhandledRejection` no topo absoluto do processo principal (`src/main/main.js`).
+  - Implementação do registrador defensivo `logStartupDiagnostic(stage, errorDetails)` com emissão em terminal e persistência em `_dev/diagnostics/boot.log`.
+- **Implementação do Preload Script Seguro (`src/main/preload.js`)**:
+  - Criação do script preload com `contextIsolation: true` e `nodeIntegration: false`, expondo a ponte `electronAPI` via `contextBridge` para controles de janela, diretórios, metadados e histórico.
+- **Saneamento de Caminhos e Resolução de Assets**:
+  - Conversão dos links de stylesheets (`theme.css`, `main.css`, `window.css`) e scripts (`ui-controller.js`) em `src/renderer/index.html` de caminhos absolutos com barra inicial para notação relativa (`./`), erradicando falhas `ERR_FILE_NOT_FOUND` sob protocolo nativo `file://`.
+- **Mitigação de Falhas Gráficas e Compositores Linux**:
+  - Injeção preventiva de flags do Chromium (`--ozone-platform-hint=auto`, `--disable-gpu-sandbox`, `WaylandWindowDecorations`) e contingência condicional para desativação de aceleração gráfica por hardware.
+- **Sequenciamento de Exibição da Janela**:
+  - Adoção de inicialização com `show: false` e preenchimento sólido `#181A21`, exibindo a janela somente após o evento `ready-to-show` e prevenindo flashes brancos.
+  - Implementação de listeners para `did-fail-load`, `render-process-gone` e `crashed` com fallback para template HTML de contingência.
+
 ## [2.3.1] - 2026-10-15
 
 ### Estabilização de Janela Frameless e Aprimoramento do Histórico

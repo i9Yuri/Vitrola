@@ -369,7 +369,32 @@ class TestVitrolaCore(unittest.TestCase):
         mgr.cancel_all_active_tasks()
         self.assertFalse(mgr.is_download_active())
 
+    def test_electron_bootstrap_and_asset_integrity(self):
+        root = Path(__file__).resolve().parent.parent
+        main_js = root / "src" / "main" / "main.js"
+        preload_js = root / "src" / "main" / "preload.js"
+        index_html = root / "src" / "renderer" / "index.html"
+
+        self.assertTrue(main_js.exists(), "src/main/main.js must exist")
+        self.assertTrue(preload_js.exists(), "src/main/preload.js must exist")
+        self.assertTrue(index_html.exists(), "src/renderer/index.html must exist")
+
+        # Verify index.html does not contain root-relative file:/// links
+        content = index_html.read_text(encoding="utf-8")
+        self.assertNotIn('href="/styles/', content, "Stylesheets must not use absolute root paths")
+        self.assertNotIn('src="/js/', content, "Scripts must not use absolute root paths")
+        self.assertIn('href="./styles/', content, "Stylesheets must use relative paths")
+        self.assertIn('src="./js/', content, "Scripts must use relative paths")
+
+        # Verify Node syntax check passes
+        res_main = subprocess.run(["node", "-c", str(main_js)], capture_output=True, text=True)
+        self.assertEqual(res_main.returncode, 0, f"main.js syntax error: {res_main.stderr}")
+
+        res_preload = subprocess.run(["node", "-c", str(preload_js)], capture_output=True, text=True)
+        self.assertEqual(res_preload.returncode, 0, f"preload.js syntax error: {res_preload.stderr}")
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

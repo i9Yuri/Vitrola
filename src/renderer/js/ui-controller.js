@@ -927,7 +927,11 @@ class UIController {
 
 export const uiController = new UIController();
 
-// Inicialização automática ao carregar o DOM
-document.addEventListener("DOMContentLoaded", () => {
+// Inicialização defensiva ao carregar o DOM
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    uiController.init();
+  });
+} else {
   uiController.init();
-});
+}

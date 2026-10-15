@@ -1,16 +1,65 @@
 /**
  * VITROLA - ELECTRON MAIN PROCESS (main.js)
- * Configurações de janela frameless nativa, controles IPC e integração com SO.
+ * Bootstrap defensivo, telemetria de inicialização, mitigação de falhas de GPU no Linux
+ * e ciclo de vida de janela frameless.
  */
 
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
+const DIAGNOSTICS_DIR = path.join(__dirname, '../../_dev/diagnostics');
+const LOG_FILE = path.join(DIAGNOSTICS_DIR, 'boot.log');
+
+/**
+ * Contrato de Registro de Falhas (Diagnostics Logger)
+ */
+function logStartupDiagnostic(stage, errorDetails = {}) {
+  const timestamp = new Date().toISOString();
+  const msg = errorDetails.message || 'Erro não especificado';
+  const stack = errorDetails.stack || '';
+  const code = errorDetails.code !== undefined ? ` [Code: ${errorDetails.code}]` : '';
+
+  const logLine = `[${timestamp}][${stage}]${code} ${msg}${stack ? '\n' + stack : ''}\n`;
+
+  // Output no terminal com destaque
+  console.error(`\x1b[31m[BOOT-DIAGNOSTIC][${stage}]\x1b[0m ${msg}${code}`);
+  if (stack) {
+    console.error(`\x1b[33m${stack}\x1b[0m`);
+  }
+
+  try {
+    if (!fs.existsSync(DIAGNOSTICS_DIR)) {
+      fs.mkdirSync(DIAGNOSTICS_DIR, { recursive: true });
+    }
+    fs.appendFileSync(LOG_FILE, logLine, 'utf8');
+  } catch (fsErr) {
+    console.error('[BOOT-LOG] Falha ao persistir log em disco:', fsErr.message);
+  }
+}
+
+// 1. Interceptação global preventiva de exceções síncronas e assíncronas
+process.on('uncaughtException', (err, origin) => {
+  logStartupDiagnostic('uncaughtException', {
+    message: err ? err.message : 'Exceção não tratada capturada',
+    stack: err ? err.stack : undefined,
+    origin: String(origin)
+  });
+});
+
+process.on('unhandledRejection', (reason) => {
+  logStartupDiagnostic('unhandledRejection', {
+    message: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined
+  });
+});
+
 let electron = null;
 try {
   electron = require('electron');
-} catch (_) {}
+} catch (e) {
+  // Execução fora do runtime do Electron (ex: Node unit tests / backend)
+}
 
 const { app, BrowserWindow, ipcMain, dialog, shell } = electron || {};
 
@@ -26,6 +75,53 @@ function getDefaultDownloadPath() {
   const musicDir = path.join(os.homedir(), 'Música', APP_CONFIG.DEFAULT_DOWNLOAD_DIR);
   if (fs.existsSync(musicDir)) return musicDir;
   return path.join(os.homedir(), 'Downloads', APP_CONFIG.DEFAULT_DOWNLOAD_DIR);
+}
+
+// 2. Flags de Compatibilidade Gráfica e Compositores Linux (Wayland / X11)
+if (app) {
+  if (process.platform === 'linux') {
+    try {
+      app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
+      app.commandLine.appendSwitch('disable-gpu-sandbox');
+      app.commandLine.appendSwitch('enable-features', 'WaylandWindowDecorations');
+
+      // Permitir desativação de hardware acceleration via variável de ambiente
+      if (process.env.VITROLA_DISABLE_GPU === '1' || process.env.LIBGL_ALWAYS_SOFTWARE === '1') {
+        app.disableHardwareAcceleration();
+        console.log('\x1b[33m[BOOT] Aceleração gráfica por hardware desativada por configuração.\x1b[0m');
+      }
+    } catch (switchErr) {
+      logStartupDiagnostic('gpu-switch-init', { message: switchErr.message });
+    }
+  }
+}
+
+/**
+ * Contrato de Verificação de Bootstrap (Main Process)
+ * validateStartupPrerequisites(): Promise<{ isValid: boolean, missingAssets: string[], resolvedEntryPath: string }>
+ */
+async function validateStartupPrerequisites() {
+  const resolvedEntryPath = path.resolve(__dirname, '../renderer/index.html');
+  const preloadScriptPath = path.resolve(__dirname, 'preload.js');
+  const mainCssPath = path.resolve(__dirname, '../renderer/styles/main.css');
+
+  const missingAssets = [];
+
+  if (!fs.existsSync(resolvedEntryPath)) missingAssets.push(`HTML: ${resolvedEntryPath}`);
+  if (!fs.existsSync(preloadScriptPath)) missingAssets.push(`Preload: ${preloadScriptPath}`);
+  if (!fs.existsSync(mainCssPath)) missingAssets.push(`CSS: ${mainCssPath}`);
+
+  const isValid = missingAssets.length === 0;
+
+  if (!isValid) {
+    logStartupDiagnostic('validateStartupPrerequisites', {
+      message: `Ativos críticos ausentes: ${missingAssets.join(', ')}`
+    });
+  } else {
+    console.log('\x1b[32m[BOOT] Pré-requisitos de inicialização validados com sucesso.\x1b[0m');
+  }
+
+  return { isValid, missingAssets, resolvedEntryPath };
 }
 
 function registerIpcHandlers() {
@@ -121,13 +217,38 @@ function registerIpcHandlers() {
     } else if (action === 'close') {
       win.close();
       return { success: true, action: 'close' };
+    } else if (action === 'start_drag') {
+      return { success: true, action: 'start_drag' };
     }
     return { success: false, error: `Ação desconhecida: ${action}` };
   });
+
+  // History operations fallback
+  ipcMain.handle('history:getAggregated', async () => {
+    return [];
+  });
+  ipcMain.handle('history:deleteItem', async (event, mediaKey) => {
+    return { success: true, mediaKey };
+  });
+  ipcMain.handle('history:clearAll', async () => {
+    return { success: true };
+  });
 }
 
-function createWindow() {
+/**
+ * Contrato de Configuração de Janela Defensiva
+ * createSecureMainWindow(options: BrowserWindowInitOptions): BrowserWindow
+ * Schema: { entryHtmlPath, preloadScriptPath, isDevMode, disableGpu, themeBgColor }
+ */
+function createSecureMainWindow(options = {}) {
   if (!BrowserWindow) return null;
+
+  const entryHtmlPath = options.entryHtmlPath || path.resolve(__dirname, '../renderer/index.html');
+  const preloadScriptPath = options.preloadScriptPath || path.resolve(__dirname, 'preload.js');
+  const themeBgColor = options.themeBgColor || '#181A21';
+  const isDevMode = options.isDevMode !== undefined ? options.isDevMode : (!app.isPackaged || process.env.NODE_ENV === 'development');
+
+  console.log('\x1b[34m[BOOT] Instanciando BrowserWindow defensiva...\x1b[0m');
 
   const win = new BrowserWindow({
     title: APP_CONFIG.NAME,
@@ -136,42 +257,148 @@ function createWindow() {
     minWidth: 840,
     minHeight: 580,
     frame: false,
-    backgroundColor: '#181A21',
+    show: false, // Exibição sob demanda: aguarda ready-to-show
+    backgroundColor: themeBgColor,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: fs.existsSync(preloadScriptPath) ? preloadScriptPath : undefined,
+      sandbox: false,
+      webSecurity: true,
     }
   });
 
-  // desktopName for Wayland / X11 taskbars
   if (win.setDesktopFileName) {
     win.setDesktopFileName('vitrola.desktop');
   }
 
-  win.loadFile(path.join(__dirname, '../renderer/index.html'));
+  // 1. Sequenciamento de Exibição da Janela
+  win.once('ready-to-show', () => {
+    console.log('\x1b[32m[BOOT] Evento ready-to-show recebido. Exibindo janela.\x1b[0m');
+    win.show();
+    if (isDevMode) {
+      try {
+        win.webContents.openDevTools({ mode: 'detach' });
+      } catch (devErr) {
+        logStartupDiagnostic('openDevTools', { message: devErr.message });
+      }
+    }
+  });
+
+  // 2. Telemetria de Falhas no Ciclo de Vida do WebContents
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    logStartupDiagnostic('did-fail-load', {
+      message: `Falha ao carregar URL '${validatedURL}': ${errorDescription}`,
+      code: errorCode
+    });
+
+    // Contingência: renderiza página de erro local explicativa
+    const contingencyHtml = `
+      <!doctype html>
+      <html style="background:#181A21;color:#EFF0F5;font-family:sans-serif;padding:32px;">
+      <head><meta charset="utf-8"><title>Vitrola - Erro de Carregamento</title></head>
+      <body>
+        <h2 style="color:#D9484F;">Falha no Carregamento do Vitrola</h2>
+        <p>Não foi possível carregar a interface da aplicação.</p>
+        <div style="background:#1F222B;padding:16px;border-radius:8px;font-family:monospace;margin:16px 0;">
+          <div><b>Código de Erro:</b> ${errorCode}</div>
+          <div><b>Descrição:</b> ${errorDescription}</div>
+          <div><b>URL:</b> ${validatedURL}</div>
+        </div>
+        <p>Verifique o arquivo de log em <code>_dev/diagnostics/boot.log</code> para detalhes adicionais.</p>
+      </body>
+      </html>
+    `;
+    win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(contingencyHtml)}`);
+  });
+
+  win.webContents.on('render-process-gone', (event, details) => {
+    logStartupDiagnostic('render-process-gone', {
+      message: `Processo de renderização encerrado inesperadamente. Motivo: ${details.reason}`,
+      code: details.exitCode
+    });
+  });
+
+  win.webContents.on('crashed', (event, killed) => {
+    logStartupDiagnostic('webContents-crashed', {
+      message: `Processo de webContents crashou (Killed: ${killed})`
+    });
+  });
+
+  // 3. Ingestão Segura do HTML
+  if (fs.existsSync(entryHtmlPath)) {
+    console.log(`\x1b[34m[BOOT] Carregando HTML: ${entryHtmlPath}\x1b[0m`);
+    win.loadFile(entryHtmlPath).catch((err) => {
+      logStartupDiagnostic('win.loadFile', { message: err.message, stack: err.stack });
+    });
+  } else {
+    logStartupDiagnostic('entryHtmlNotFound', {
+      message: `Arquivo HTML não encontrado em ${entryHtmlPath}`
+    });
+    const missingHtml = `
+      <!doctype html>
+      <html style="background:#181A21;color:#EFF0F5;font-family:sans-serif;padding:32px;">
+      <head><meta charset="utf-8"><title>Vitrola - Erro</title></head>
+      <body>
+        <h2 style="color:#D9484F;">Arquivo de Interface Não Encontrado</h2>
+        <p>O arquivo principal de renderização não existe no caminho esperado:</p>
+        <code style="background:#1F222B;padding:8px 12px;display:block;border-radius:6px;margin:12px 0;">${entryHtmlPath}</code>
+      </body>
+      </html>
+    `;
+    win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(missingHtml)}`);
+    win.show();
+  }
+
   return win;
 }
+
+let mainWindow = null;
+let isBootstrapReady = false;
 
 if (app) {
   app.setName('Vitrola');
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    console.log('\x1b[32m[BOOT] Electron app.whenReady disparado.\x1b[0m');
+
+    const prereqs = await validateStartupPrerequisites();
     registerIpcHandlers();
-    createWindow();
+
+    mainWindow = createSecureMainWindow({
+      entryHtmlPath: prereqs.resolvedEntryPath,
+      preloadScriptPath: path.resolve(__dirname, 'preload.js'),
+      themeBgColor: '#181A21',
+      isDevMode: !app.isPackaged || process.env.NODE_ENV === 'development'
+    });
+
+    isBootstrapReady = true;
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      if (BrowserWindow.getAllWindows().length === 0) {
+        mainWindow = createSecureMainWindow();
+      }
     });
+  }).catch((readyErr) => {
+    logStartupDiagnostic('app.whenReady', { message: readyErr.message, stack: readyErr.stack });
   });
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    // Se a janela fechou antes do bootstrap terminar, não finalizar de imediato em modo debug
+    if (!isBootstrapReady) {
+      logStartupDiagnostic('early-window-closed', { message: 'Janela fechada antes da conclusão do bootstrap.' });
+    }
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
   });
 }
 
 module.exports = {
   APP_CONFIG,
   getDefaultDownloadPath,
-  registerIpcHandlers
+  registerIpcHandlers,
+  logStartupDiagnostic,
+  validateStartupPrerequisites,
+  createSecureMainWindow,
 };
