@@ -197,3 +197,53 @@ def format_seconds(seconds: Optional[float]) -> str:
     if hours > 0:
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
     return f"{minutes:02d}:{secs:02d}"
+
+
+def select_directory_dialog() -> Dict[str, Any]:
+    """
+    Shows native Linux folder picker dialog using Zenity or KDialog.
+    Updates config if a folder is selected.
+    """
+    current = str(get_download_directory())
+    chosen = None
+
+    if shutil.which("zenity"):
+        try:
+            proc = subprocess.run(
+                [
+                    "zenity",
+                    "--file-selection",
+                    "--directory",
+                    f"--filename={current}/",
+                    "--title=Selecionar pasta para downloads",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            if proc.returncode == 0:
+                chosen = proc.stdout.strip()
+        except Exception as e:
+            print(f"[System] Zenity dialog error: {e}")
+    elif shutil.which("kdialog"):
+        try:
+            proc = subprocess.run(
+                ["kdialog", "--getexistingdirectory", current],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            if proc.returncode == 0:
+                chosen = proc.stdout.strip()
+        except Exception as e:
+            print(f"[System] KDialog error: {e}")
+
+    if chosen and Path(chosen).is_dir():
+        cfg = load_config()
+        if "storage" not in cfg:
+            cfg["storage"] = {}
+        cfg["storage"]["download_dir"] = chosen
+        save_config(cfg)
+        return {"canceled": False, "path": chosen}
+
+    return {"canceled": True, "path": current}

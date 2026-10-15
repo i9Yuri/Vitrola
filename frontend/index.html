@@ -1,308 +1,355 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+<!doctype html>
+<html lang="pt-BR" data-theme="dark" data-dark-variant="slate">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MediaForge - High-Performance Media Downloader</title>
-  <link rel="stylesheet" href="/styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22 width=%2232%22 height=%2232%22><rect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%2310b981%22/><path d=%22M16 6v14m-5-5 5 5 5-5M8 24h16%22 stroke=%22%230c0d0e%22 stroke-width=%222.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fita — Baixador de Áudio e Vídeo</title>
+  
+  <!-- Prevenção imediata de FOUC -->
+  <script>
+    (function(){
+      try {
+        var s = localStorage.getItem('user_theme_preferences');
+        if (s) {
+          var p = JSON.parse(s);
+          var r = document.documentElement;
+          if (p.themeMode === 'dark-amoled' || p.darkVariant === 'amoled') {
+            r.setAttribute('data-theme', 'dark-amoled');
+            r.setAttribute('data-dark-variant', 'amoled');
+          } else if (p.themeMode === 'light') {
+            r.setAttribute('data-theme', 'light');
+          } else {
+            r.setAttribute('data-theme', 'dark');
+            r.setAttribute('data-dark-variant', 'slate');
+          }
+          if (p.accentColor && p.accentColor !== 'default') {
+            r.setAttribute('data-accent', p.accentColor);
+          }
+        }
+      } catch(e){}
+    })();
+  </script>
+
+  <!-- Google Fonts Bricolage Grotesque -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap" rel="stylesheet">
+
+  <!-- Estilos Desacoplados -->
+  <link rel="stylesheet" href="/styles/theme.css">
+  <link rel="stylesheet" href="/styles/main.css">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Header Apple-Inspired -->
-    <header class="app-header">
-      <div class="header-brand">
-        <div class="brand-glyph">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-        </div>
-        <div class="brand-text">
-          <span class="brand-title">MediaForge</span>
-          <span class="brand-caption">Nobara Linux Engine</span>
-        </div>
+
+  <!-- Sprite de Ícones SVG -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+    <symbol id="i-paste" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1.2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7.5 11 4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3"/><circle cx="15" cy="6" r="2"/><path d="M4 12h3M11 12h9"/><circle cx="9" cy="12" r="2"/><path d="M4 18h10M18 18h2"/><circle cx="16" cy="18" r="2"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M9 18V6.5l10-2V16"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="16" r="2"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10.5 9.5v5l4.2-2.5z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-min" viewBox="0 0 24 24"><path d="M6 12h12"/></symbol>
+    <symbol id="i-max" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></symbol>
+  </svg>
+
+  <!-- Janela Principal -->
+  <div class="window" role="application" aria-label="Fita, baixador de música e vídeo">
+
+    <!-- Titlebar Customizada Integrada -->
+    <header class="titlebar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">
+          <i style="height:8px"></i><i style="height:15px"></i><i style="height:20px"></i><i style="height:12px"></i><i style="height:6px"></i>
+        </span>
+        fita
       </div>
-
-      <div class="header-actions">
-        <!-- yt-dlp Version & Updater Pill -->
-        <button id="btn-updater" class="pill-updater" title="Clique para verificar/atualizar o motor yt-dlp">
-          <svg class="icon-sync" id="updater-sync-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-          </svg>
-          <span id="ytdlp-version-badge">yt-dlp v2026.08.19</span>
-        </button>
-
-        <!-- Open Folder Action -->
-        <button id="btn-open-folder" class="btn-apple-secondary" title="Abrir pasta no gerenciador de arquivos (xdg-open)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span>Abrir Pasta</span>
-        </button>
+      <div class="tb-actions">
+        <button class="tb-menu" aria-label="Menu de Opções"><svg class="i"><use href="#i-menu"/></svg></button>
+        <span class="tb-sep"></span>
+        <button id="btn-win-min" class="round" aria-label="Minimizar janela"><svg class="i"><use href="#i-min"/></svg></button>
+        <button id="btn-win-max" class="round" aria-label="Maximizar ou restaurar"><svg class="i"><use href="#i-max"/></svg></button>
+        <button id="btn-win-close" class="round close" aria-label="Fechar aplicação"><svg class="i"><use href="#i-x"/></svg></button>
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="app-main">
-      <!-- Hero Command Bar (Search/URL Input) -->
-      <section class="command-bar-card">
-        <form id="inspect-form" class="command-bar-form">
-          <div class="command-input-container">
-            <div class="command-prefix-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
+    <!-- Shell Grid (208px 1fr) -->
+    <div class="shell">
+
+      <!-- Barra Lateral (Sidebar) -->
+      <aside class="sidebar">
+        <nav class="nav" aria-label="Navegação da Aplicação">
+          <button data-view="home" aria-current="page">
+            <svg class="i"><use href="#i-download"/></svg>
+            <span class="lbl">Baixar</span>
+          </button>
+          <button data-view="queue">
+            <svg class="i"><use href="#i-list"/></svg>
+            <span class="lbl">Fila</span>
+            <span class="count hidden" id="nav-queue-count">0</span>
+          </button>
+          <button data-view="library">
+            <svg class="i"><use href="#i-folder"/></svg>
+            <span class="lbl">Biblioteca</span>
+          </button>
+          <button data-view="settings">
+            <svg class="i"><use href="#i-sliders"/></svg>
+            <span class="lbl">Ajustes</span>
+          </button>
+        </nav>
+
+        <div class="side-foot">
+          <button id="btn-dest" class="dest" aria-label="Pasta de destino">
+            <svg class="i"><use href="#i-folder"/></svg>
+            <div>
+              <small>Salvando em</small>
+              <strong id="dest-path">~/Downloads/MediaForge</strong>
             </div>
+          </button>
+          <div id="sidebar-engine" class="engine" title="Clique para abrir painel de governança do yt-dlp">
+            <b></b><span id="engine-status-text">yt-dlp em dia</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Viewport Principal (Main: Home + Queue) -->
+      <main class="main">
+
+        <!-- Área Central de Busca e Configuração -->
+        <section class="home">
+          <h1>Cole um link, escolha o formato.</h1>
+
+          <form id="search-form" class="linkbar">
+            <svg class="i"><use href="#i-link"/></svg>
             <input
               type="text"
-              id="url-input"
-              class="command-input"
-              placeholder="Cole o link da mídia (YouTube, Bandcamp, Soundcloud, etc.)..."
-              autocomplete="off"
+              id="input-url"
+              placeholder="Cole o link de uma música ou vídeo"
+              aria-label="Link da música ou do vídeo"
               spellcheck="false"
-              required
-              autofocus
+              autocomplete="off"
             >
-            <button type="button" id="btn-paste" class="command-icon-btn" title="Colar da Área de Transferência">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-              </svg>
+            <button type="button" id="btn-paste" class="btn-text">
+              <svg class="i"><use href="#i-paste"/></svg><span>Colar</span>
             </button>
-            <button type="submit" id="btn-inspect" class="command-submit-btn">
-              <svg class="spinner hidden" id="inspect-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/>
-              </svg>
-              <span id="inspect-btn-text">Analisar</span>
+            <button type="submit" id="btn-search" class="btn-soft">
+              <svg class="i"><use href="#i-search"/></svg>Buscar
             </button>
-          </div>
-        </form>
+          </form>
 
-        <!-- Error Notification Banner -->
-        <div id="error-banner" class="alert-glass alert-danger hidden">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span id="error-message">Erro na extração</span>
-        </div>
-      </section>
+          <p class="hint">
+            <span>Aceita YouTube, SoundCloud, Bandcamp e outros sites do yt-dlp.</span>
+            <span><kbd>Ctrl</kbd> <kbd>V</kbd> cola e busca de qualquer lugar da janela.</span>
+          </p>
 
-      <!-- Inspection Result & Downloader Panel (Bento Style) -->
-      <section id="media-panel" class="bento-card media-panel hidden">
-        <!-- YouTube Music Notice Banner -->
-        <div id="music-track-banner" class="alert-glass alert-warning hidden">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18V5l12-2v13"/>
-            <circle cx="6" cy="18" r="3"/>
-            <circle cx="18" cy="16" r="3"/>
-          </svg>
-          <span id="music-track-text">Faixa de áudio pura (YouTube Music) - Vídeo indisponível para este item</span>
-        </div>
-
-        <!-- Media Header / Info -->
-        <div class="media-overview">
-          <div class="media-thumbnail-wrapper">
-            <img id="media-thumbnail" src="" alt="Thumbnail" class="media-thumbnail">
-            <span id="media-duration" class="duration-tag">--:--</span>
-          </div>
-          <div class="media-details">
-            <h2 id="media-title" class="media-title">Título da Mídia</h2>
-            <div class="media-meta-row">
-              <span class="meta-item">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
-                <strong id="media-uploader">Canal / Artista</strong>
-              </span>
-              <span class="meta-dot">•</span>
-              <span class="meta-item" id="media-views-wrapper">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-                <span id="media-views">0 visualizações</span>
-              </span>
+          <!-- Cartão de Resultado da Mídia -->
+          <article id="result-card" class="card hidden" data-mode="audio">
+            <div class="found">
+              <div id="card-thumb" class="thumb-lg">
+                <span id="card-dur" class="dur">--:--</span>
+              </div>
+              <div class="found-info">
+                <h2 id="card-title">Título da Mídia</h2>
+                <p id="card-by" class="by">Canal / Artista</p>
+                <p id="card-stats" class="stats">Metadados e estatísticas</p>
+              </div>
             </div>
-            <div id="media-tags" class="media-tags-list"></div>
-          </div>
-        </div>
 
-        <!-- iOS/macOS Style Segmented Control & Options (Collapsible) -->
-        <div id="options-collapsible" class="download-config options-collapsible">
-          <div class="segmented-control-wrapper">
-            <div class="segmented-control" role="tablist">
-              <button type="button" id="mode-audio-btn" class="segmented-btn active" data-mode="audio" role="tab">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 18V5l12-2v13"/>
-                  <circle cx="6" cy="18" r="3"/>
-                  <circle cx="18" cy="16" r="3"/>
-                </svg>
-                <span>Áudio Puro (Bit-Perfect)</span>
+            <!-- Alternador Primário: Áudio vs Vídeo -->
+            <div class="modes" role="radiogroup" aria-label="O que baixar">
+              <button class="tile" role="radio" aria-checked="true" data-mode="audio">
+                <span class="badge"><svg class="i"><use href="#i-note"/></svg></span>
+                <span><strong>Áudio</strong><span class="sub">MP3, M4A, OPUS ou FLAC</span></span>
               </button>
-              <button type="button" id="mode-video-btn" class="segmented-btn" data-mode="video" role="tab" title="Download em container MP4">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-                  <line x1="7" y1="2" x2="7" y2="22"/>
-                  <line x1="17" y1="2" x2="17" y2="22"/>
-                  <line x1="2" y1="12" x2="22" y2="12"/>
-                  <line x1="2" y1="7" x2="7" y2="7"/>
-                  <line x1="2" y1="17" x2="7" y2="17"/>
-                  <line x1="17" y1="17" x2="22" y2="17"/>
-                  <line x1="17" y1="7" x2="22" y2="7"/>
-                </svg>
-                <span>Vídeo MP4 (Nativo)</span>
+              <button class="tile" role="radio" aria-checked="false" data-mode="video">
+                <span class="badge"><svg class="i"><use href="#i-film"/></svg></span>
+                <span><strong>Vídeo</strong><span class="sub">MP4, WEBM ou MKV, com som</span></span>
               </button>
             </div>
+
+            <!-- Chips de Configuração de Formato e Qualidade -->
+            <div class="opts">
+              <!-- Áudio: Formato -->
+              <div class="row only-audio">
+                <span class="lab" id="lbl-audio-fmt">Formato</span>
+                <div class="chips" role="group" aria-labelledby="lbl-audio-fmt">
+                  <button class="chip chip-audio-fmt" aria-pressed="true" data-format="MP3">MP3</button>
+                  <button class="chip chip-audio-fmt" aria-pressed="false" data-format="M4A">M4A</button>
+                  <button class="chip chip-audio-fmt" aria-pressed="false" data-format="OPUS">OPUS</button>
+                  <button class="chip chip-audio-fmt" aria-pressed="false" data-format="FLAC">FLAC</button>
+                </div>
+              </div>
+
+              <!-- Áudio: Qualidade -->
+              <div class="row only-audio">
+                <span class="lab" id="lbl-audio-q">Qualidade</span>
+                <div class="chips" role="group" aria-labelledby="lbl-audio-q">
+                  <button class="chip chip-audio-q" aria-pressed="true" data-bitrate="320">320 kbps</button>
+                  <button class="chip chip-audio-q" aria-pressed="false" data-bitrate="256">256 kbps</button>
+                  <button class="chip chip-audio-q" aria-pressed="false" data-bitrate="128">128 kbps</button>
+                </div>
+              </div>
+
+              <!-- Vídeo: Formato -->
+              <div class="row only-video">
+                <span class="lab" id="lbl-video-fmt">Formato</span>
+                <div class="chips" role="group" aria-labelledby="lbl-video-fmt">
+                  <button class="chip chip-video-fmt" aria-pressed="true" data-format="MP4">MP4</button>
+                  <button class="chip chip-video-fmt" aria-pressed="false" data-format="WEBM">WEBM</button>
+                  <button class="chip chip-video-fmt" aria-pressed="false" data-format="MKV">MKV</button>
+                </div>
+              </div>
+
+              <!-- Vídeo: Resolução -->
+              <div class="row only-video">
+                <span class="lab" id="lbl-video-res">Resolução</span>
+                <div class="chips" role="group" aria-labelledby="lbl-video-res">
+                  <button class="chip chip-video-res" aria-pressed="true" data-res="1080p">1080p</button>
+                  <button class="chip chip-video-res" aria-pressed="false" data-res="720p">720p</button>
+                  <button class="chip chip-video-res" aria-pressed="false" data-res="480p">480p</button>
+                  <button class="chip chip-video-res" aria-pressed="false" data-res="360p">360p</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Toggles de Metadados / Legendas e Botão Baixar -->
+            <div class="actions">
+              <div class="switch only-audio">
+                <button id="sw-audio-meta" role="switch" aria-checked="true" aria-labelledby="lbl-sw-meta"></button>
+                <span id="lbl-sw-meta">Incluir capa e dados da faixa</span>
+              </div>
+              <div class="switch only-video">
+                <button id="sw-video-subs" role="switch" aria-checked="false" aria-labelledby="lbl-sw-subs"></button>
+                <span id="lbl-sw-subs">Incluir legendas</span>
+              </div>
+              <div class="go-wrap">
+                <span id="lbl-size" class="size">≈ -- MB</span>
+                <button id="btn-go" class="go">
+                  <svg class="i"><use href="#i-download"/></svg>
+                  <span class="only-audio">Baixar áudio</span>
+                  <span class="only-video">Baixar vídeo</span>
+                </button>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <!-- Painel Lateral de Downloads (Queue 340px) -->
+        <aside class="queue" aria-label="Downloads">
+          <div class="q-head">
+            <h2>Downloads</h2>
+            <span id="queue-count-header">Fila vazia</span>
           </div>
 
-          <!-- Options: Pure Audio Mode -->
-          <div id="audio-options" class="options-container">
-            <div class="option-card">
-              <div class="option-header">
-                <label for="audio-stream-select" class="field-label">Stream de Áudio Nativo</label>
-                <span class="badge-quality-audio" id="audio-quality-badge">ORIGINAL / BIT-PERFECT</span>
-              </div>
-              <select id="audio-stream-select" class="apple-select"></select>
-              <span class="field-hint">Fluxo original direto da fonte sem transcodificação para MP3 (Opus 48kHz ou AAC puro).</span>
+          <ul id="queue-list" class="q-list">
+            <li class="q-empty">Nenhum download em andamento.</li>
+          </ul>
+
+          <div class="q-foot">
+            <button id="btn-pause-all" class="link-btn">Pausar tudo</button>
+            <button id="btn-clear-done" class="link-btn">Limpar concluídos</button>
+          </div>
+        </aside>
+
+      </main>
+    </div>
+
+    <!-- Modal de Ajustes & Governança yt-dlp -->
+    <div id="modal-settings" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="modal-sheet">
+        <header class="modal-header">
+          <h3 id="settings-title">Ajustes & Governança</h3>
+          <button class="x btn-close-modal" aria-label="Fechar ajustes"><svg class="i"><use href="#i-x"/></svg></button>
+        </header>
+        <div class="modal-content">
+          <!-- Modo de Superfície (Tema) -->
+          <div class="setting-group">
+            <label>Modo de Superfície</label>
+            <div class="theme-options" role="radiogroup" aria-label="Tema do Sistema">
+              <button class="theme-btn" data-mode="dark" aria-checked="true">
+                Grafite (Slate)
+              </button>
+              <button class="theme-btn" data-mode="dark-amoled" aria-checked="false">
+                Preto Puro (AMOLED)
+              </button>
+              <button class="theme-btn" data-mode="light" aria-checked="false">
+                Claro (Light)
+              </button>
             </div>
           </div>
 
-          <!-- Options: Video Mode -->
-          <div id="video-options" class="options-container hidden">
-            <div class="option-card">
-              <div class="option-header">
-                <label for="video-res-select" class="field-label">Resolução Alvo (Container MP4)</label>
-                <span class="badge-quality-video" id="video-quality-badge">MELHOR QUALIDADE</span>
-              </div>
-              <select id="video-res-select" class="apple-select"></select>
-              <span class="field-hint">Mescla o melhor fluxo de vídeo na resolução desejada com áudio original no container MP4.</span>
+          <!-- Cores de Acento -->
+          <div class="setting-group">
+            <label>Cor de Destaque (Acento)</label>
+            <div class="accent-options" role="radiogroup" aria-label="Cor de Acento">
+              <button class="accent-btn" data-color="default" aria-checked="true">
+                Dinâmico (Áudio/Vídeo)
+              </button>
+              <button class="accent-btn" data-color="amber" aria-checked="false">
+                <span class="color-dot" style="color:#FFB547"></span> Âmbar
+              </button>
+              <button class="accent-btn" data-color="violet" aria-checked="false">
+                <span class="color-dot" style="color:#8E96FF"></span> Violeta
+              </button>
+              <button class="accent-btn" data-color="emerald" aria-checked="false">
+                <span class="color-dot" style="color:#10B981"></span> Esmeralda
+              </button>
+              <button class="accent-btn" data-color="rose" aria-checked="false">
+                <span class="color-dot" style="color:#F43F5E"></span> Carmim
+              </button>
+              <button class="accent-btn" data-color="cyan" aria-checked="false">
+                <span class="color-dot" style="color:#06B6D4"></span> Ciano
+              </button>
             </div>
           </div>
 
-          <!-- Secondary Options Bar -->
-          <div class="secondary-options-bar">
-            <label class="apple-checkbox-label">
-              <input type="checkbox" id="opt-metadata" checked>
-              <span class="apple-checkbox"></span>
-              <span>Embutir Metadados & Capa HD</span>
-            </label>
-
-            <div class="subtitles-block">
-              <label class="apple-checkbox-label">
-                <input type="checkbox" id="opt-subtitles">
-                <span class="apple-checkbox"></span>
-                <span>Embutir Legendas</span>
-              </label>
-              <div id="sub-lang-wrapper" class="sub-lang-wrapper hidden">
-                <select id="sub-lang-select" class="apple-select apple-select-sm"></select>
+          <!-- Governança do Motor yt-dlp -->
+          <div class="setting-group">
+            <label>Governança do yt-dlp</label>
+            <div class="ytdlp-governance-box">
+              <div class="ytdlp-status-row">
+                <span class="ytdlp-badge"><b></b><span id="ytdlp-version-badge">v2026.08.19</span></span>
+                <div class="ytdlp-actions">
+                  <button id="btn-check-ytdlp" class="btn-secondary">Verificar</button>
+                  <button id="btn-update-ytdlp" class="btn-primary">Atualizar Agora</button>
+                </div>
               </div>
+              <div id="ytdlp-logs" class="ytdlp-logs">Aguardando verificação do executável local...</div>
             </div>
           </div>
-
-          <!-- Action Button -->
-          <div class="action-footer">
-            <button type="button" id="btn-start-download" class="btn-apple-action">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              <span id="download-btn-text">Iniciar Download de Áudio Puro (Sem Recodificação)</span>
-            </button>
-          </div>
         </div>
-      </section>
-
-      <!-- Operational Status & Live Progress Monitor (Bento Style) -->
-      <section id="progress-card" class="bento-card progress-card hidden">
-        <div class="progress-header">
-          <div class="progress-title-block">
-            <span class="operational-badge" id="prog-badge">BAIXANDO</span>
-            <h3 id="prog-filename" class="prog-filename">Processando arquivo...</h3>
-          </div>
-          <div class="progress-percentage">
-            <span id="prog-pct-number" class="pct-val">0.0</span><span class="pct-symbol">%</span>
-          </div>
-        </div>
-
-        <!-- Ultra-thin Progress Track -->
-        <div class="progress-track">
-          <div id="progress-bar-fill" class="progress-fill" style="width: 0%;"></div>
-        </div>
-
-        <!-- Apple-like Metrics Row -->
-        <div class="metrics-grid">
-          <div class="metric-cell">
-            <span class="metric-label">VELOCIDADE</span>
-            <span id="prog-speed" class="metric-val">-- KiB/s</span>
-          </div>
-          <div class="metric-cell">
-            <span class="metric-label">RESTANTE (ETA)</span>
-            <span id="prog-eta" class="metric-val">--:--</span>
-          </div>
-          <div class="metric-cell">
-            <span class="metric-label">TAMANHO</span>
-            <span id="prog-size" class="metric-val">--</span>
-          </div>
-          <div class="metric-cell">
-            <span class="metric-label">DESTINO</span>
-            <span id="prog-folder-hint" class="metric-val" title="Clique para abrir pasta">~/Downloads/MediaForge</span>
-          </div>
-        </div>
-
-        <!-- Minimalist log line -->
-        <div class="status-console" id="terminal-log-box">
-          <div class="log-line" id="prog-log-line">Iniciando motor yt-dlp...</div>
-        </div>
-      </section>
-
-      <!-- Download History & Output Manager (Bento Style) -->
-      <section class="bento-card history-section">
-        <div class="history-header">
-          <div class="section-heading">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
-            <h3>Downloads Recentes</h3>
-          </div>
-          <button id="btn-refresh-history" class="icon-btn-subtle" title="Atualizar histórico">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"/>
-              <path d="M1 20v-6h6"/>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-            </svg>
-          </button>
-        </div>
-
-        <div id="history-container" class="history-list">
-          <div class="empty-state" id="history-empty">
-            <span>Nenhum download registrado nesta sessão. Insira uma URL acima para começar.</span>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <!-- Floating Toast Notification System -->
-    <div id="toast-container" class="toast-container hidden">
-      <div id="toast-body" class="toast-body">
-        <span id="toast-icon">✔</span>
-        <span id="toast-message">Operação concluída com sucesso.</span>
       </div>
     </div>
 
-    <!-- Minimalist Apple Footer -->
-    <footer class="app-footer">
-      <span>MediaForge • Nobara Linux Core • High-Fidelity Extraction</span>
-    </footer>
+    <!-- Modal de Biblioteca (Histórico) -->
+    <div id="modal-library" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="library-title">
+      <div class="modal-sheet">
+        <header class="modal-header">
+          <h3 id="library-title">Biblioteca de Downloads</h3>
+          <button class="x btn-close-modal" aria-label="Fechar biblioteca"><svg class="i"><use href="#i-x"/></svg></button>
+        </header>
+        <div class="modal-content">
+          <div id="library-list" style="display:grid;gap:8px">
+            <p class="q-empty">Carregando histórico...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Flutuante -->
+    <div id="toast" class="toast" role="status" aria-live="polite">
+      <span id="toast-msg">Mensagem</span>
+    </div>
+
   </div>
 
-  <script src="/app.js"></script>
+  <!-- Inicialização do Controlador Principal -->
+  <script type="module" src="/js/ui-controller.js"></script>
 </body>
 </html>

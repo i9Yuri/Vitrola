@@ -18,6 +18,7 @@ from backend.core.system import (
     save_config,
     get_download_directory,
     open_in_file_manager,
+    select_directory_dialog,
     get_resource_path,
 )
 from backend.core.ytdlp_wrapper import inspect_url
@@ -143,6 +144,12 @@ class MediaForgeHandler(BaseHTTPRequestHandler):
             target_path = body.get("path")
             res = open_in_file_manager(target_path)
             self._send_json(res, 200 if res.get("success") else 500)
+            return
+
+        # 3.1 API: Select Folder Native Dialog
+        if path == "/api/select-folder":
+            res = select_directory_dialog()
+            self._send_json(res, 200)
             return
 
         # 4. API: Update Configuration
