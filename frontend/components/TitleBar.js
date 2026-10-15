@@ -19,5 +19,19 @@ export class TitleBar {
     if (btnMin) btnMin.addEventListener("click", () => this.onWindowAction("minimize"));
     if (btnMax) btnMax.addEventListener("click", () => this.onWindowAction("maximize"));
     if (btnClose) btnClose.addEventListener("click", () => this.onWindowAction("close"));
+
+    // Duplo clique na barra de título alterna maximização
+    container.addEventListener("dblclick", (e) => {
+      if (!e.target.closest("button") && !e.target.closest("a") && !e.target.closest("input")) {
+        this.onWindowAction("maximize");
+      }
+    });
+
+    // Mousedown em área livre aciona arraste nativo se aplicável
+    container.addEventListener("mousedown", (e) => {
+      if (e.button === 0 && !e.target.closest("button") && !e.target.closest("a") && !e.target.closest("input")) {
+        this.onWindowAction("start_drag");
+      }
+    });
   }
 }

@@ -34,6 +34,23 @@ export interface HistoryItem {
   download_count?: number;
 }
 
+export interface AggregatedHistoryRecord {
+  mediaKey: string;
+  title: string;
+  artist?: string;
+  format: string;
+  quality?: string;
+  sizeBytes?: number;
+  total_size?: string;
+  filePath?: string;
+  filepath?: string;
+  filename?: string;
+  completedAt: string;
+  completed_at?: string;
+  downloadCount: number;
+  rawItems?: HistoryItem[];
+}
+
 export interface WindowActionResult {
   success: boolean;
   isMaximized?: boolean;

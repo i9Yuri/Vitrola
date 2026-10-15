@@ -5,9 +5,10 @@
 
 import { themeManager } from "./theme-manager.js";
 import { ytdlpManager } from "./ytdlp-manager.js";
-import { minimizeWindow, maximizeWindow, closeWindow } from "../../main/ipc/window-controls.js";
+import { minimizeWindow, maximizeWindow, closeWindow, startWindowDrag } from "../../main/ipc/window-controls.js";
 import { selectDirectory } from "../../main/ipc/filesystem-handler.js";
 import { HistoryModal } from "../components/HistoryModal.js";
+import { TitleBar } from "../components/TitleBar.js";
 
 // Pseudo-random deterministic generator for waveforms
 function createRng(seed) {
@@ -39,9 +40,17 @@ class UIController {
     this.bindEvents();
     this.initThemes();
     this.initYtDlp();
+    this.initTitleBar();
     this.loadConfig();
     this.loadHistory();
     this.setupGlobalPaste();
+  }
+
+  initTitleBar() {
+    this.titleBar = new TitleBar({
+      onWindowAction: (action) => this.handleWindowAction(action),
+    });
+    this.titleBar.mount();
   }
 
   cacheDom() {
@@ -750,7 +759,8 @@ class UIController {
     item.className = "dl done";
     item.dataset.mode = task.payload.mode;
 
-    const finalSize = data.total_size || "Concluído";
+    const rawSize = data.total_size;
+    const finalSize = (!rawSize || /^(na|n\/a|null|undefined)$/i.test(String(rawSize).trim())) ? "Concluído" : rawSize;
     item.innerHTML = `
       <div class="thumb">${task.metadata.thumbnail ? `<img src="${task.metadata.thumbnail}" alt="Thumb">` : ""}</div>
       <div class="dl-body">
@@ -767,6 +777,7 @@ class UIController {
 
     item.querySelector(".btn-open-folder").addEventListener("click", () => this.openDestinationFolder());
     this.showToast(`Download de "${task.metadata.title}" concluído!`, "success");
+    this.loadHistory();
   }
 
   markTaskFailed(taskId, error) {
@@ -866,6 +877,7 @@ class UIController {
         modalElement: this.modalLibrary,
         listElement: this.libraryList,
         onToast: (msg, type) => this.showToast(msg, type),
+        onReload: () => this.loadHistory(),
       });
     }
     this.historyModalInstance.render(items);
@@ -897,12 +909,18 @@ class UIController {
   // Window Actions (Nativas via IPC / Desktop Runner / Fallback)
   // --------------------------------------------------------------------------
   async handleWindowAction(action) {
-    if (action === "minimize") {
-      await minimizeWindow();
-    } else if (action === "maximize") {
-      await maximizeWindow();
-    } else if (action === "close") {
-      await closeWindow();
+    try {
+      if (action === "minimize") {
+        await minimizeWindow();
+      } else if (action === "maximize") {
+        await maximizeWindow();
+      } else if (action === "close") {
+        await closeWindow();
+      } else if (action === "start_drag") {
+        await startWindowDrag();
+      }
+    } catch (e) {
+      console.warn(`[UI] Erro ao executar ação de janela '${action}':`, e);
     }
   }
 }

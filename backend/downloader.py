@@ -6,6 +6,7 @@ import json
 import queue
 import threading
 import subprocess
+import shutil
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
@@ -33,6 +34,14 @@ def get_history_file() -> Path:
     return user_hist
 
 HISTORY_FILE = get_history_file()
+
+
+def format_size_bytes(num_bytes: int) -> str:
+    for unit in ["B", "KiB", "MiB", "GiB", "TiB"]:
+        if abs(num_bytes) < 1024.0:
+            return f"{num_bytes:3.1f} {unit}"
+        num_bytes /= 1024.0
+    return f"{num_bytes:.1f} PiB"
 
 
 class DownloadTask:
@@ -128,6 +137,21 @@ class DownloadManager:
                         item["completed_at"] = completed_at
                         item["download_count"] = max(1, int(item.get("download_count", 1)))
                         item["media_key"] = item.get("media_key") or f"{item.get('title', '')}_{item.get('mode', '')}"
+                        
+                        # Sanitize total_size/size to prevent "NA" or "N/A"
+                        raw_size = item.get("total_size") or item.get("size")
+                        if not raw_size or str(raw_size).strip().upper() in ("NA", "N/A", "NONE", "UNDEFINED"):
+                            fp = item.get("filepath")
+                            if fp and os.path.exists(fp):
+                                try:
+                                    raw_size = format_size_bytes(os.path.getsize(fp))
+                                except Exception:
+                                    raw_size = "Concluído"
+                            else:
+                                raw_size = "Concluído"
+                        item["total_size"] = raw_size
+                        item["size"] = raw_size
+
                         cleaned.append(item)
                     return cleaned
             except Exception as e:
@@ -164,6 +188,45 @@ class DownloadManager:
     def get_history(self) -> List[Dict[str, Any]]:
         with self._lock:
             return list(self.history)
+
+    def delete_history_item(self, media_key: str) -> bool:
+        """Deletes a specific history item by media_key or task id."""
+        with self._lock:
+            initial_count = len(self.history)
+            target = str(media_key).strip().lower()
+            self.history = [
+                h for h in self.history
+                if str(h.get("media_key", "")).strip().lower() != target
+                and str(h.get("id", "")).strip().lower() != target
+                and str(h.get("task_id", "")).strip().lower() != target
+            ]
+            if len(self.history) < initial_count:
+                self._save_history()
+                return True
+            return False
+
+    def clear_history(self) -> bool:
+        """Clears all records from history storage."""
+        with self._lock:
+            self.history = []
+            self._save_history()
+            return True
+
+    def cancel_all_active_tasks(self):
+        """Cleanly terminates any running yt-dlp/ffmpeg processes to avoid zombie subprocesses or shutdown crashes."""
+        with self._lock:
+            for task in self.tasks.values():
+                if task.status in ["downloading", "processing"] and task.process:
+                    try:
+                        task.process.terminate()
+                        try:
+                            task.process.wait(timeout=1.0)
+                        except subprocess.TimeoutExpired:
+                            task.process.kill()
+                    except Exception as e:
+                        print(f"[DownloadManager] Error terminating task process {task.task_id}: {e}")
+                    task.status = "cancelled"
+                    task.broadcast()
 
     def is_download_active(self) -> bool:
         """Returns True if any task is currently downloading or processing."""
@@ -305,6 +368,16 @@ class DownloadManager:
                     if recent_files:
                         task.filepath = str(recent_files[0])
                         task.filename = recent_files[0].name
+
+                # Sanitize total_size before recording to history
+                if not task.total_size or str(task.total_size).strip().upper() in ("NA", "N/A", "NONE", "UNDEFINED"):
+                    if task.filepath and Path(task.filepath).exists():
+                        try:
+                            task.total_size = format_size_bytes(Path(task.filepath).stat().st_size)
+                        except Exception:
+                            task.total_size = "Concluído"
+                    else:
+                        task.total_size = "Concluído"
 
                 # Add to history with deduplication and grouping
                 media_key = f"{task.url.strip()}_{task.mode}"

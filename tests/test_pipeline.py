@@ -326,6 +326,50 @@ class TestVitrolaCore(unittest.TestCase):
         fmt = probe_data.get("format", {}).get("format_name", "")
         self.assertIn("mp4", fmt.lower())
 
+    def test_history_management_and_sanitization(self):
+        from backend.downloader import DownloadManager, format_size_bytes
+
+        mgr = DownloadManager()
+        # Seed test history entries
+        mgr.history = [
+            {
+                "id": "t1",
+                "media_key": "song1_mp3",
+                "title": "Song 1",
+                "mode": "audio",
+                "total_size": "NA",
+                "download_count": 1,
+            },
+            {
+                "id": "t2",
+                "media_key": "song2_mp4",
+                "title": "Song 2",
+                "mode": "video",
+                "total_size": "5.4 MiB",
+                "download_count": 3,
+            },
+        ]
+
+        # Verify format_size_bytes
+        self.assertEqual(format_size_bytes(1024), "1.0 KiB")
+        self.assertEqual(format_size_bytes(10485760), "10.0 MiB")
+
+        # Delete single item by media_key
+        deleted = mgr.delete_history_item("song1_mp3")
+        self.assertTrue(deleted)
+        self.assertEqual(len(mgr.get_history()), 1)
+        self.assertEqual(mgr.get_history()[0]["media_key"], "song2_mp4")
+
+        # Clear all history
+        cleared = mgr.clear_history()
+        self.assertTrue(cleared)
+        self.assertEqual(len(mgr.get_history()), 0)
+
+        # Active tasks cancellation test
+        mgr.cancel_all_active_tasks()
+        self.assertFalse(mgr.is_download_active())
+
 
 if __name__ == "__main__":
     unittest.main()
+

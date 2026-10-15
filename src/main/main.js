@@ -76,6 +76,54 @@ function registerIpcHandlers() {
       return { success: false, error: err.message };
     }
   });
+
+  // window controls IPC
+  ipcMain.handle('window:minimize', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) win.minimize();
+    return { success: true, action: 'minimize' };
+  });
+
+  ipcMain.handle('window:toggleMaximize', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      if (win.isMaximized()) {
+        win.unmaximize();
+        return { success: true, isMaximized: false };
+      } else {
+        win.maximize();
+        return { success: true, isMaximized: true };
+      }
+    }
+    return { success: false };
+  });
+
+  ipcMain.handle('window:closeApp', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) win.close();
+    return { success: true, action: 'close' };
+  });
+
+  ipcMain.handle('window:action', async (event, action) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return { success: false, error: 'Janela não encontrada' };
+    if (action === 'minimize') {
+      win.minimize();
+      return { success: true, action: 'minimize' };
+    } else if (action === 'maximize') {
+      if (win.isMaximized()) {
+        win.unmaximize();
+        return { success: true, isMaximized: false };
+      } else {
+        win.maximize();
+        return { success: true, isMaximized: true };
+      }
+    } else if (action === 'close') {
+      win.close();
+      return { success: true, action: 'close' };
+    }
+    return { success: false, error: `Ação desconhecida: ${action}` };
+  });
 }
 
 function createWindow() {

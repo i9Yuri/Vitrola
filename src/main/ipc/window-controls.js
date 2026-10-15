@@ -51,3 +51,20 @@ export async function closeWindow() {
     return { success: true };
   }
 }
+
+export async function startWindowDrag() {
+  if (window.electronAPI?.startWindowDrag) {
+    return await window.electronAPI.startWindowDrag();
+  }
+  try {
+    const res = await fetch("/api/window/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "start_drag" }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+

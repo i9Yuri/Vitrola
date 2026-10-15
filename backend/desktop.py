@@ -41,6 +41,12 @@ def dispatch_window_action(action: str) -> Dict[str, Any]:
             elif action == "close":
                 _active_window.close()
                 return {"success": True, "action": "close"}
+            elif action == "start_drag":
+                win_handle = _active_window.windowHandle()
+                if win_handle and hasattr(win_handle, "startSystemMove"):
+                    success = win_handle.startSystemMove()
+                    return {"success": success, "action": "start_drag"}
+                return {"success": False, "error": "startSystemMove unavailable"}
 
         # pywebview Window
         elif hasattr(_active_window, "destroy"):
@@ -91,7 +97,7 @@ def launch_desktop_window(server_url: str):
 
     # 2. Try PySide6 QtWebEngine (native to Nobara Linux / Fedora)
     try:
-        from PySide6.QtCore import QUrl, QSize, Qt, QPoint
+        from PySide6.QtCore import QUrl, QSize, Qt, QPoint, QObject, QEvent
         from PySide6.QtGui import QColor, QPalette
         from PySide6.QtWidgets import QApplication, QMainWindow
         from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -110,6 +116,34 @@ def launch_desktop_window(server_url: str):
         palette.setColor(QPalette.Text, QColor("#EFF0F5"))
         app.setPalette(palette)
 
+        class TitlebarDragFilter(QObject):
+            def __init__(self, window):
+                super().__init__()
+                self.window = window
+                self._dragging = False
+                self._drag_start = None
+
+            def eventFilter(self, watched, event):
+                if event.type() == QEvent.MouseButtonPress:
+                    if event.button() == Qt.LeftButton:
+                        global_pt = event.globalPosition().toPoint()
+                        pos = self.window.mapFromGlobal(global_pt)
+                        # Titlebar area: top 46px, outside window controls (right 130px)
+                        if 0 <= pos.y() <= 46 and pos.x() < self.window.width() - 130:
+                            win_handle = self.window.windowHandle()
+                            if win_handle and hasattr(win_handle, "startSystemMove"):
+                                if win_handle.startSystemMove():
+                                    return True
+                            self._dragging = True
+                            self._drag_start = global_pt - self.window.frameGeometry().topLeft()
+                elif event.type() == QEvent.MouseMove:
+                    if self._dragging and (event.buttons() & Qt.LeftButton):
+                        self.window.move(event.globalPosition().toPoint() - self._drag_start)
+                        return True
+                elif event.type() == QEvent.MouseButtonRelease:
+                    self._dragging = False
+                return super().eventFilter(watched, event)
+
         class VitrolaFramelessWindow(QMainWindow):
             def __init__(self, url: str):
                 super().__init__()
@@ -127,29 +161,8 @@ def launch_desktop_window(server_url: str):
                 self.browser.setUrl(QUrl(url))
                 self.setCentralWidget(self.browser)
 
-                self._drag_pos = None
-
-            def mousePressEvent(self, event):
-                if event.button() == Qt.LeftButton and event.position().y() <= 48:
-                    win_handle = self.windowHandle()
-                    if win_handle and hasattr(win_handle, "startSystemMove"):
-                        win_handle.startSystemMove()
-                    else:
-                        self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-                    event.accept()
-                else:
-                    super().mousePressEvent(event)
-
-            def mouseMoveEvent(self, event):
-                if self._drag_pos is not None and event.buttons() == Qt.LeftButton:
-                    self.move(event.globalPosition().toPoint() - self._drag_pos)
-                    event.accept()
-                else:
-                    super().mouseMoveEvent(event)
-
-            def mouseReleaseEvent(self, event):
-                self._drag_pos = None
-                super().mouseReleaseEvent(event)
+                self._drag_filter = TitlebarDragFilter(self)
+                app.installEventFilter(self._drag_filter)
 
         _active_window = VitrolaFramelessWindow(server_url)
         _active_window.show()

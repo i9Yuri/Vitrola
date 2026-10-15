@@ -2,6 +2,23 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.3.1] - 2026-10-15
+
+### Estabilização de Janela Frameless e Aprimoramento do Histórico
+- **Estabilização de Arraste e Controles de Janela**:
+  - Correção do arraste da barra de título no ambiente Linux (X11/Wayland) via filtro global de eventos `TitlebarDragFilter` no QtWebEngine/PySide6 utilizando `startSystemMove()`.
+  - Habilitação de área arrastável contínua em `.titlebar` e `.brand` em `window.css`, mantendo controles interativos com `-webkit-app-region: no-drag`.
+  - Suporte a duplo clique na barra de título para alternar maximização e mousedown nativo.
+  - Eliminação de botões gráficos inertes (`.tb-menu`, `.tb-sep`) na barra de título.
+  - Encerramento limpo e seguro de subprocessos ativos yt-dlp e FFmpeg (`cancel_all_active_tasks()`) na ação de fechar janela, prevenindo zumbis, deadlocks e crashes.
+- **Agrupamento e Contagem Cumulativa no Histórico**:
+  - Consolidação do algoritmo de deduplicação e agrupamento por `mediaKey` (`${title}_${format}`), condensando downloads repetidos em um único cartão com badge multiplicador (ex.: `4x`).
+  - Erradicação absoluta de strings literais corrompidas e ambíguas (`"NA"`, `"N/A"`, `null`, `undefined`) em metadados, tamanhos e arquivos no frontend e backend (`sanitizeMetadataString`, `format_size_bytes`).
+  - Implementação de botão de exclusão granular (`.btn-delete-history-item` com ícone de lixeira `#i-trash`) por registro no modal de histórico.
+  - Implementação de expurgo total de histórico (`#btn-clear-history`) com diálogo de confirmação do usuário e contador em tempo real (`#history-total-count`).
+- **Harmonização Estética de Barras de Rolagem (Scrollbar)**:
+  - Padronização de scrollbar compacta (6px) com trilho transparente e thumb sensível ao tema (`--line-strong` e `--line-hover`), perfeitamente integrada aos modos Claro, Grafite (Slate) e AMOLED puro.
+
 ## [2.3.0] - 2026-10-15
 
 ### Rebranding Definitivo & Sincronização Canônica

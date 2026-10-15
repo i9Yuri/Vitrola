@@ -5,7 +5,7 @@ import time
 import mimetypes
 from pathlib import Path
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 
 # Ensure root directory is on Python path
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -174,12 +174,32 @@ class VitrolaHandler(BaseHTTPRequestHandler):
         # 3.3 API: Window Action Dispatcher
         if path == "/api/window/action":
             action = body.get("action", "")
+            if action == "close":
+                try:
+                    manager.cancel_all_active_tasks()
+                except Exception as e:
+                    print(f"[Main] Aviso ao cancelar processos na finalização: {e}")
             try:
                 from backend.desktop import dispatch_window_action
                 res = dispatch_window_action(action)
                 self._send_json(res, 200)
             except Exception as e:
                 self._send_json({"success": False, "error": str(e)}, 200)
+            return
+
+        # 3.4 API: History Record Management (Delete Item or Clear All)
+        if path == "/api/history/delete" or (path == "/api/history" and body.get("action") == "delete"):
+            media_key = body.get("media_key") or body.get("mediaKey") or body.get("id")
+            if not media_key:
+                self._send_error_json("Campo 'media_key' é obrigatório para exclusão")
+                return
+            success = manager.delete_history_item(str(media_key))
+            self._send_json({"success": success, "history": manager.get_history()})
+            return
+
+        if path == "/api/history/clear" or (path == "/api/history" and body.get("action") == "clear"):
+            success = manager.clear_history()
+            self._send_json({"success": success, "history": []})
             return
 
         # 4. API: Update Configuration
@@ -204,6 +224,22 @@ class VitrolaHandler(BaseHTTPRequestHandler):
             return
 
         self._send_error_json("Endpoint não encontrado", 404)
+
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path == "/api/history":
+            success = manager.clear_history()
+            self._send_json({"success": success, "history": []})
+            return
+        elif path.startswith("/api/history/"):
+            media_key = unquote(path.split("/api/history/", 1)[1])
+            success = manager.delete_history_item(media_key)
+            self._send_json({"success": success, "history": manager.get_history()})
+            return
+
+        self._send_error_json("Endpoint DELETE não encontrado", 404)
 
     def _serve_file(self, file_path: Path, content_type: str):
         if not file_path.exists() or not file_path.is_file():

@@ -49,8 +49,6 @@ body {
 .titlebar select,
 .titlebar a,
 .tb-actions,
-.tb-menu,
-.round,
-.brand {
+.round {
   -webkit-app-region: no-drag;
 }
