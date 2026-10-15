@@ -308,6 +308,10 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
                 "is_auto": True,
             })
 
+    raw_filesize = data.get("filesize") or data.get("filesize_approx")
+    if not raw_filesize and audio_streams:
+        raw_filesize = audio_streams[0].get("filesize")
+
     return {
         "success": True,
         "metadata": {
@@ -320,6 +324,8 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
             "thumbnail": thumbnail_url,
             "tags": tags[:10],
             "view_count": view_count,
+            "filesize": raw_filesize,
+            "filesize_formatted": format_bytes(raw_filesize) if raw_filesize else None,
             "is_music_track": is_music_track,
             "has_real_video": has_real_video,
             "has_video": has_real_video,
@@ -340,11 +346,14 @@ def build_download_command(
     embed_thumbnail: bool = True,
     embed_subtitles: bool = False,
     subtitle_lang: Optional[str] = None,
+    is_original_quality: bool = False,
+    target_format: Optional[str] = None,
 ) -> List[str]:
     """
     Builds the exact yt-dlp command-line arguments.
     Enforces pure audio without transcoding and MP4 multi-resolution container.
     Saves cleanly as <Title>.<ext> without video ID brackets.
+    Supports is_original_quality (direct extraction without recoding).
     """
     cmd = [
         YTDLP_BIN,
@@ -366,11 +375,19 @@ def build_download_command(
     output_template = str(output_dir / "%(title)s.%(ext)s")
     cmd.extend(["-o", output_template])
 
+    is_original = (
+        is_original_quality
+        or str(target_format).lower() in ("original", "source")
+        or str(format_id).lower() in ("original", "source")
+    )
+
     if mode == "audio":
         # =========================================================================
-        # PIPELINE DE ÁUDIO PURO (BIT-PERFECT / SEM RECODIFICAÇÃO)
+        # PIPELINE DE ÁUDIO (ORIGINAL / BIT-PERFECT OU ESPECIFICADO)
         # =========================================================================
-        if format_id:
+        if is_original:
+            cmd.extend(["-f", "bestaudio/best"])
+        elif format_id:
             cmd.extend(["-f", format_id])
         else:
             # Native best audio stream: Opus preferred, then M4A, then any native audio
@@ -389,10 +406,13 @@ def build_download_command(
 
     else:
         # =========================================================================
-        # PIPELINE DE VÍDEO MP4 (MULTI-RESOLUÇÃO)
+        # PIPELINE DE VÍDEO
         # =========================================================================
-        if format_id:
+        if is_original:
+            cmd.extend(["-f", "bestvideo+bestaudio/best"])
+        elif format_id:
             cmd.extend(["-f", f"{format_id}+bestaudio[ext=m4a]/bestaudio/best"])
+            cmd.extend(["--merge-output-format", "mp4"])
         else:
             format_str = (
                 f"bestvideo[height<={target_res}][ext=mp4]+bestaudio[ext=m4a]/"
@@ -400,9 +420,7 @@ def build_download_command(
                 f"best[height<={target_res}]"
             )
             cmd.extend(["-f", format_str])
-
-        # Enforce final MP4 container
-        cmd.extend(["--merge-output-format", "mp4"])
+            cmd.extend(["--merge-output-format", "mp4"])
 
         if embed_metadata:
             cmd.append("--add-metadata")

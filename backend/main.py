@@ -83,6 +83,26 @@ class VitrolaHandler(BaseHTTPRequestHandler):
             self._send_json({"success": True, "updater": updater.to_dict()})
             return
 
+        # 4.1 API: Clipboard Fallback
+        if path == "/api/clipboard":
+            text = ""
+            try:
+                if os.environ.get("WAYLAND_DISPLAY"):
+                    p = subprocess.run(["wl-paste", "--no-newline"], capture_output=True, text=True, timeout=1)
+                    if p.returncode == 0:
+                        text = p.stdout
+            except Exception:
+                pass
+            if not text:
+                try:
+                    p = subprocess.run(["xclip", "-selection", "clipboard", "-o"], capture_output=True, text=True, timeout=1)
+                    if p.returncode == 0:
+                        text = p.stdout
+                except Exception:
+                    pass
+            self._send_json({"success": True, "text": text}, 200)
+            return
+
         # 5. Static frontend files
         if path == "/" or path == "/index.html":
             self._serve_file(FRONTEND_DIR / "index.html", "text/html; charset=utf-8")

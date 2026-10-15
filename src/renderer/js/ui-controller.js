@@ -1,6 +1,7 @@
 /**
  * VITROLA - CONTROLADOR DE INTERFACE (ui-controller.js)
- * Orquestração de eventos, busca com yt-dlp, telemetria de disco, fila reativa e layout Sonora.
+ * Orquestração de eventos, busca com yt-dlp, telemetria de disco, fila reativa,
+ * vinil interativo (VinylDisc), leitura do clipboard IPC e modo original de download.
  */
 
 import { themeManager } from "./theme-manager.js";
@@ -12,15 +13,16 @@ import { StatusBar } from "../components/StatusBar.js";
 import { Sidebar } from "../components/Sidebar.js";
 import { MediaSearchCard } from "../components/MediaSearchCard.js";
 import { SettingsModal } from "../components/SettingsModal.js";
+import { VinylDisc } from "../components/VinylDisc.js";
 
 class UIController {
   constructor() {
     this.currentInspection = null;
     this.currentUrl = "";
     this.activeMode = "audio"; // "audio" | "video"
-    this.audioFormat = "MP3";
+    this.audioFormat = "Original";
     this.audioBitrate = 320;
-    this.videoFormat = "MP4";
+    this.videoFormat = "Original";
     this.videoRes = "1080p";
     this.embedMetadata = true;
     this.embedSubtitles = false;
@@ -82,6 +84,10 @@ class UIController {
       onDestinationChanged: (newPath) => this.updateDestination(newPath),
       onToast: (msg, type) => this.showToast(msg, type),
     });
+
+    // Vinil Interativo com Arraste Polar
+    this.vinylDisc = new VinylDisc();
+    this.vinylDisc.mount(document.querySelector(".disc"));
   }
 
   cacheDom() {
@@ -151,12 +157,14 @@ class UIController {
       });
     });
 
-    // Audio format chips (MP3, Opus, M4A - RIGOROSAMENTE SEM FLAC)
+    // Audio format chips (Original prioritário, MP3, Opus, M4A)
     this.chipsAudioFmt.forEach((chip) => {
       chip.addEventListener("click", () => {
         this.chipsAudioFmt.forEach((c) => c.classList.remove("on"));
         chip.classList.add("on");
         this.audioFormat = chip.dataset.fmt || chip.textContent.trim();
+        const isOriginal = this.audioFormat.toLowerCase() === "original";
+        this.mediaSearchCard.setOriginalMode("audio", isOriginal);
         this.recalcEstimatedSize();
       });
     });
@@ -171,12 +179,14 @@ class UIController {
       });
     });
 
-    // Video format chips
+    // Video format chips (Original prioritário, MP4, WebM, MKV)
     this.chipsVideoFmt.forEach((chip) => {
       chip.addEventListener("click", () => {
         this.chipsVideoFmt.forEach((c) => c.classList.remove("on"));
         chip.classList.add("on");
         this.videoFormat = chip.dataset.fmt || chip.textContent.trim();
+        const isOriginal = this.videoFormat.toLowerCase() === "original";
+        this.mediaSearchCard.setOriginalMode("video", isOriginal);
         this.recalcEstimatedSize();
       });
     });
@@ -279,7 +289,6 @@ class UIController {
   // --------------------------------------------------------------------------
   async loadConfig() {
     try {
-      // Migração padronizada de chaves legadas
       try {
         const legacyKeys = ["mediaforge_settings", "mediaforge_config", "fita_config", "mare_settings", "mare_config"];
         let legacyData = null;
@@ -293,7 +302,6 @@ class UIController {
         }
       } catch (_) {}
 
-      // Busca do diretório via IPC Electron ou HTTP
       let dir = "";
       if (window.electronAPI && typeof window.electronAPI.getDownloadPath === "function") {
         dir = await window.electronAPI.getDownloadPath();
@@ -373,13 +381,35 @@ class UIController {
 
   async pasteFromClipboard() {
     try {
-      const text = await navigator.clipboard.readText();
-      if (text && text.trim().startsWith("http")) {
-        this.inputUrl.value = text.trim();
+      let text = "";
+      if (window.electronAPI && typeof window.electronAPI.readClipboard === "function") {
+        text = await window.electronAPI.readClipboard();
+      } else {
+        try {
+          const res = await fetch("/api/clipboard");
+          const data = await res.json();
+          if (data && data.text) text = data.text;
+        } catch (_) {}
+        if (!text && navigator.clipboard && navigator.clipboard.readText) {
+          text = await navigator.clipboard.readText();
+        }
+      }
+
+      text = (text || "").trim();
+      if (!text) {
+        this.showToast("Área de transferência vazia", "warning");
+        return;
+      }
+
+      this.inputUrl.value = text;
+      this.inputUrl.focus();
+
+      const isUrl = /^https?:\/\//i.test(text);
+      if (isUrl) {
         this.showToast("Link colado da área de transferência", "success");
         this.inspectCurrentUrl();
       } else {
-        this.showToast("Nenhum link válido encontrado na área de transferência", "warning");
+        this.showToast("Texto colado no campo de busca", "success");
       }
     } catch (err) {
       console.warn("[UI] Falha no clipboard:", err);
@@ -388,15 +418,14 @@ class UIController {
   }
 
   // --------------------------------------------------------------------------
-  // Inspeção de Mídia
+  // Inspeção de Mídia & Skeleton Shimmer
   // --------------------------------------------------------------------------
   async inspectCurrentUrl() {
     const url = this.inputUrl.value.trim();
     if (!url) return;
 
     this.currentUrl = url;
-    this.card.classList.remove("hidden");
-    this.card.classList.add("loading");
+    this.mediaSearchCard.setState("fetching-skeleton");
     this.btnSearch.disabled = true;
 
     try {
@@ -410,15 +439,15 @@ class UIController {
       if (data.success && data.metadata) {
         this.currentInspection = data;
         this.populateCard(data);
+        this.mediaSearchCard.setState("metadata-ready");
       } else {
         this.showToast(data.error || "URL inválida ou não suportada", "error");
-        this.card.classList.add("hidden");
+        this.mediaSearchCard.setState("error");
       }
     } catch (err) {
       this.showToast(`Erro ao conectar com o serviço: ${err.message}`, "error");
-      this.card.classList.add("hidden");
+      this.mediaSearchCard.setState("error");
     } finally {
-      this.card.classList.remove("loading");
       this.btnSearch.disabled = false;
     }
   }
@@ -428,7 +457,7 @@ class UIController {
     this.cardTitle.textContent = meta.title || "Mídia sem título";
     this.cardBy.textContent = meta.uploader || "Canal / Artista";
 
-    const durationStr = meta.duration_formatted || "--:--";
+    const durationStr = meta.duration_formatted || meta.duration_str || "--:--";
     this.cardDur.textContent = durationStr;
 
     const views = meta.view_count ? Number(meta.view_count).toLocaleString("pt-BR") : "0";
@@ -449,6 +478,13 @@ class UIController {
     } else {
       this.setMode(this.activeMode || "audio");
     }
+
+    // Sincroniza estado de qualidade original
+    const isOriginalAudio = this.audioFormat.toLowerCase() === "original";
+    this.mediaSearchCard.setOriginalMode("audio", isOriginalAudio);
+
+    const isOriginalVideo = this.videoFormat.toLowerCase() === "original";
+    this.mediaSearchCard.setOriginalMode("video", isOriginalVideo);
 
     this.recalcEstimatedSize();
   }
@@ -472,22 +508,33 @@ class UIController {
       return;
     }
 
-    const dur = this.currentInspection.metadata.duration || 240;
+    const meta = this.currentInspection.metadata;
+    const dur = meta.duration || 240;
 
     // Áudio
-    const kbps = this.audioBitrate || 320;
-    const bytesA = (kbps * 1000 * dur) / 8;
-    const mbA = (bytesA / (1024 * 1024)).toFixed(1).replace(".", ",");
-    if (this.lblSizeA) this.lblSizeA.textContent = `≈ ${mbA} MB`;
+    if (this.audioFormat.toLowerCase() === "original") {
+      const rawSize = meta.filesize_formatted || (meta.filesize ? `${(meta.filesize / (1024 * 1024)).toFixed(1)} MB` : "Original (Fonte)");
+      if (this.lblSizeA) this.lblSizeA.textContent = rawSize;
+    } else {
+      const kbps = this.audioBitrate || 320;
+      const bytesA = (kbps * 1000 * dur) / 8;
+      const mbA = (bytesA / (1024 * 1024)).toFixed(1).replace(".", ",");
+      if (this.lblSizeA) this.lblSizeA.textContent = `≈ ${mbA} MB`;
+    }
 
     // Vídeo
-    let factor = 0.25;
-    if (this.videoRes.includes("720")) factor = 0.15;
-    else if (this.videoRes.includes("480")) factor = 0.08;
-    else if (this.videoRes.includes("360")) factor = 0.05;
+    if (this.videoFormat.toLowerCase() === "original") {
+      const rawSize = meta.filesize_formatted || (meta.filesize ? `${(meta.filesize / (1024 * 1024)).toFixed(1)} MB` : "Original (Fonte)");
+      if (this.lblSizeV) this.lblSizeV.textContent = rawSize;
+    } else {
+      let factor = 0.25;
+      if (this.videoRes.includes("720")) factor = 0.15;
+      else if (this.videoRes.includes("480")) factor = 0.08;
+      else if (this.videoRes.includes("360")) factor = 0.05;
 
-    const approxMbV = Math.max(2, Math.round(dur * factor));
-    if (this.lblSizeV) this.lblSizeV.textContent = `≈ ${approxMbV} MB`;
+      const approxMbV = Math.max(2, Math.round(dur * factor));
+      if (this.lblSizeV) this.lblSizeV.textContent = `≈ ${approxMbV} MB`;
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -496,19 +543,24 @@ class UIController {
   async startDownload() {
     if (!this.currentInspection || !this.currentUrl) return;
 
+    const isOriginal = (this.activeMode === "audio" && this.audioFormat.toLowerCase() === "original") ||
+                       (this.activeMode === "video" && this.videoFormat.toLowerCase() === "original");
+
     const payload = {
       url: this.currentUrl,
       mode: this.activeMode,
       title: this.currentInspection.metadata.title,
       format: this.activeMode === "audio" ? this.audioFormat : this.videoFormat,
       format_id: null,
+      is_original_quality: isOriginal,
+      isOriginalQuality: isOriginal,
       target_res: parseInt(this.videoRes, 10) || 1080,
       embed_metadata: this.embedMetadata,
       embed_thumbnail: true,
       embed_subtitles: this.embedSubtitles,
     };
 
-    if (this.activeMode === "audio" && this.currentInspection.audio_streams) {
+    if (!isOriginal && this.activeMode === "audio" && this.currentInspection.audio_streams) {
       const match = this.currentInspection.audio_streams.find((s) => s.ext === this.audioFormat.toLowerCase());
       if (match) payload.format_id = match.format_id;
     }
@@ -544,7 +596,11 @@ class UIController {
     row.className = "row";
     row.id = `row-task-${taskId}`;
 
-    const tagText = payload.mode === "audio" ? `${payload.format} ${this.audioBitrate} kbps` : `${payload.format} ${payload.target_res}p`;
+    const isOriginal = payload.is_original_quality;
+    const tagText = isOriginal
+      ? (payload.mode === "audio" ? "Áudio Original" : "Vídeo Original")
+      : (payload.mode === "audio" ? `${payload.format} ${this.audioBitrate} kbps` : `${payload.format} ${payload.target_res}p`);
+
     const thumbHtml = metadata.thumbnail
       ? `<img src="${metadata.thumbnail}" alt="Capa" loading="lazy">`
       : "";
@@ -628,7 +684,6 @@ class UIController {
         task.stEl.innerHTML = `<svg class="i"><use href="#check"/></svg>Concluído`;
       }
 
-      // Substitui botão de cancelar por botão de abrir pasta
       const btn = row.querySelector(".btn-cancel-task");
       if (btn) {
         btn.className = "ib btn-open-folder";
@@ -759,7 +814,7 @@ class UIController {
         await startWindowDrag();
       }
     } catch (e) {
-      console.warn(`[UI] Erro ao executar ação de janela :`, e);
+      console.warn(`[UI] Erro ao executar ação de janela '${action}':`, e);
     }
   }
 }

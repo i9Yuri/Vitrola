@@ -238,6 +238,11 @@ class DownloadManager:
 
     def _run_task(self, task: DownloadTask):
         download_dir = get_download_directory()
+        is_original = bool(
+            task.options.get("is_original_quality")
+            or task.options.get("isOriginalQuality")
+            or str(task.options.get("format", "")).lower() == "original"
+        )
         cmd = build_download_command(
             url=task.url,
             mode=task.mode,
@@ -248,6 +253,8 @@ class DownloadManager:
             embed_thumbnail=bool(task.options.get("embed_thumbnail", True)),
             embed_subtitles=bool(task.options.get("embed_subtitles", False)),
             subtitle_lang=task.options.get("subtitle_lang"),
+            is_original_quality=is_original,
+            target_format=task.options.get("format"),
         )
 
         task.status = "downloading"

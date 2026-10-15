@@ -8,6 +8,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { getStorageTelemetry } = require('./ipc/storage-telemetry');
+const { readClipboardText } = require('./ipc/clipboard-handler');
 
 const DIAGNOSTICS_DIR = path.join(__dirname, '../../_dev/diagnostics');
 const LOG_FILE = path.join(DIAGNOSTICS_DIR, 'boot.log');
@@ -265,6 +266,11 @@ function registerIpcHandlers() {
     } catch (err) {
       return { canceled: true, error: err.message };
     }
+  });
+
+  // clipboard:readText
+  ipcMain.handle('clipboard:readText', async () => {
+    return await readClipboardText();
   });
 
   // settings:revealDownloadPath

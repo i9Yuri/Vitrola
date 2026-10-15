@@ -153,60 +153,82 @@
         <section id="result-card" class="result hidden" data-mode="audio">
           <div class="art">
             <div class="rec"></div>
-            <div id="card-thumb" class="sleeve"><em id="card-dur">--:--</em></div>
+            <div id="card-thumb" class="sleeve"><em id="card-dur"></em></div>
           </div>
           <div class="info">
-            <div>
-              <h3 id="card-title">Título da Mídia</h3>
-              <div class="meta">
-                <span id="card-by">Canal / Artista</span>
-                <span id="card-platform">Web</span>
-                <span id="card-stats">Metadados</span>
+            <!-- Esqueleto de Carregamento Neutro com Shimmer -->
+            <div id="card-skeleton" class="card-skeleton" aria-hidden="true">
+              <div style="display: grid; gap: 8px;">
+                <span class="sk-bar skeleton-shimmer" style="width: 70%; height: 22px;"></span>
+                <span class="sk-bar skeleton-shimmer" style="width: 42%; height: 14px;"></span>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <span class="sk-bar skeleton-shimmer" style="width: 86px; height: 32px; border-radius: 8px;"></span>
+                <span class="sk-bar skeleton-shimmer" style="width: 86px; height: 32px; border-radius: 8px;"></span>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <span class="sk-bar skeleton-shimmer" style="width: 64px; height: 28px; border-radius: 6px;"></span>
+                <span class="sk-bar skeleton-shimmer" style="width: 64px; height: 28px; border-radius: 6px;"></span>
+                <span class="sk-bar skeleton-shimmer" style="width: 64px; height: 28px; border-radius: 6px;"></span>
               </div>
             </div>
-            <div class="seg" role="group" aria-label="Tipo de download">
-              <button type="button" class="on" data-m="audio"><svg class="i"><use href="#music"/></svg>Áudio</button>
-              <button type="button" data-m="video"><svg class="i"><use href="#video"/></svg>Vídeo</button>
-            </div>
-            <!-- Chips Áudio (MP3, Opus, M4A - RIGOROSAMENTE SEM FLAC) -->
-            <div class="chips a chips-audio-fmt">
-              <label>Formato</label>
-              <span class="on" data-fmt="MP3">MP3</span>
-              <span data-fmt="Opus">Opus</span>
-              <span data-fmt="M4A">M4A</span>
-            </div>
-            <div class="chips a chips-audio-q">
-              <label>Qualidade</label>
-              <span class="on" data-bitrate="320">320 kbps</span>
-              <span data-bitrate="256">256 kbps</span>
-              <span data-bitrate="128">128 kbps</span>
-            </div>
-            <!-- Chips Vídeo -->
-            <div class="chips v chips-video-fmt">
-              <label>Formato</label>
-              <span class="on" data-fmt="MP4">MP4</span>
-              <span data-fmt="WebM">WebM</span>
-              <span data-fmt="MKV">MKV</span>
-            </div>
-            <div class="chips v chips-video-res">
-              <label>Resolução</label>
-              <span class="on" data-res="1080p">1080p</span>
-              <span data-res="720p">720p</span>
-              <span data-res="480p">480p</span>
-              <span data-res="360p">360p</span>
-            </div>
-            <!-- Ações e Destino Passivo -->
-            <div class="act">
-              <button type="button" id="btn-go" class="btn main go">
-                <svg class="i"><use href="#down"/></svg>
-                <span class="a">Baixar áudio</span>
-                <span class="v">Baixar vídeo</span>
-                <small id="lbl-size" class="a">≈ -- MB</small>
-                <small id="lbl-size-v" class="v">≈ -- MB</small>
-              </button>
-              <span class="dest">
-                <svg class="i"><use href="#folder"/></svg>Salvando em <strong id="dest-path">~/Música/Vitrola</strong>
-              </span>
+
+            <!-- Dados Reais da Mídia (Fade-in suave ao Confirmar Metadados) -->
+            <div id="card-real" class="card-real">
+              <div>
+                <h3 id="card-title"></h3>
+                <div class="meta">
+                  <span id="card-by"></span>
+                  <span id="card-platform"></span>
+                  <span id="card-stats"></span>
+                </div>
+              </div>
+              <div class="seg" role="group" aria-label="Tipo de download">
+                <button type="button" class="on" data-m="audio"><svg class="i"><use href="#music"/></svg>Áudio</button>
+                <button type="button" data-m="video"><svg class="i"><use href="#video"/></svg>Vídeo</button>
+              </div>
+              <!-- Chips Áudio (Original / Sem conversão prioritário, MP3, Opus, M4A) -->
+              <div class="chips a chips-audio-fmt">
+                <label>Formato</label>
+                <span class="on" data-fmt="Original" title="Extração direta da fonte sem conversão de contêiner ou recodificação">Original</span>
+                <span data-fmt="MP3">MP3</span>
+                <span data-fmt="Opus">Opus</span>
+                <span data-fmt="M4A">M4A</span>
+              </div>
+              <div class="chips a chips-audio-q chips-disabled" id="group-audio-q">
+                <label>Qualidade</label>
+                <span class="on" data-bitrate="320">320 kbps</span>
+                <span data-bitrate="256">256 kbps</span>
+                <span data-bitrate="128">128 kbps</span>
+              </div>
+              <!-- Chips Vídeo -->
+              <div class="chips v chips-video-fmt">
+                <label>Formato</label>
+                <span class="on" data-fmt="Original" title="Vídeo direto da fonte sem recompressão">Original</span>
+                <span data-fmt="MP4">MP4</span>
+                <span data-fmt="WebM">WebM</span>
+                <span data-fmt="MKV">MKV</span>
+              </div>
+              <div class="chips v chips-video-res chips-disabled" id="group-video-res">
+                <label>Resolução</label>
+                <span class="on" data-res="1080p">1080p</span>
+                <span data-res="720p">720p</span>
+                <span data-res="480p">480p</span>
+                <span data-res="360p">360p</span>
+              </div>
+              <!-- Ações e Destino Passivo -->
+              <div class="act">
+                <button type="button" id="btn-go" class="btn main go">
+                  <svg class="i"><use href="#down"/></svg>
+                  <span class="a">Baixar áudio</span>
+                  <span class="v">Baixar vídeo</span>
+                  <small id="lbl-size" class="a">≈ -- MB</small>
+                  <small id="lbl-size-v" class="v">≈ -- MB</small>
+                </button>
+                <span class="dest">
+                  <svg class="i"><use href="#folder"/></svg>Salvando em <strong id="dest-path">~/Música/Vitrola</strong>
+                </span>
+              </div>
             </div>
           </div>
         </section>

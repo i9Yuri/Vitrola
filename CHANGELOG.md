@@ -2,6 +2,33 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.5.1] - 2026-10-15
+
+### Vinil Interativo, Leitura de Clipboard por IPC, Modo Original e Skeleton Shimmer
+- **Controle Tátil e Arraste Angular do Disco de Vinil (`VinylDisc.js`)**:
+  - Implementação de máquina de estados (`idle-spinning` / `user-dragging`) com paralisação da animação contínua e controle rotacional manual.
+  - Algoritmo polar trigonométrico baseado em `Math.atan2(clientY - centerY, clientX - centerX)` com acumulador contínuo de graus e normalização contra saltos de transição de quadrantes.
+  - Captura contínua de ponteiro via `element.setPointerCapture()` assegurando retenção de eventos mesmo com o cursor fora dos limites da janela.
+  - Cursores ergonômicos `grab` em repouso e `grabbing` durante o arraste ativo.
+- **Restauração do Fluxo de Colagem da Área de Transferência**:
+  - Criação do manipulador IPC `src/main/ipc/clipboard-handler.js` consumindo `electron.clipboard.readText()`, imune a restrições de permissão do navegador.
+  - Exposição segura na ponte `window.electronAPI.readClipboard()`.
+  - Rota de contingência `GET /api/clipboard` no backend Python utilizando `wl-paste` e `xclip`.
+  - Tratamento inteligente no `ui-controller.js`: se o conteúdo for URL válida, preenche e dispara a busca imediatamente; caso contrário, cola no input permitindo edição.
+- **Modo "Original / Direto da Fonte" (Bypass de Conversão)**:
+  - Adição da opção prioritária "Original (Sem conversão)" nos grupos de formatos de áudio e vídeo.
+  - Desativação automática dos chips de compressão arbitrária (bitrates/resoluções) quando "Original" está selecionado.
+  - Estimativa de tamanho real baseada em `filesize` ou `filesize_approx` brutos fornecidos pelo yt-dlp.
+  - Bypass completo de pipes de FFmpeg (`-x`, `--audio-format`, `--recode-video`), despachando estritamente `-f bestaudio/best` (áudio) ou `-f bestvideo+bestaudio/best` (vídeo).
+- **Redesenho do Skeleton Screen Neutro com Efeito Shimmer**:
+  - Erradicação de imagens fictícias coloridas e textos estáticos prévios ("Título da Mídia", "Canal / Artista", "Web", "--:--").
+  - Placeholder monocromático neutro (`var(--s2)`) com máscara de gradiente linear deslizante horizontal (`@keyframes shimmer` de 0% a 200%).
+  - Barras esqueléticas (`.sk-bar`) com larguras proporcionais (70% para título, 42% para metadados).
+  - Transição suave via fade-in (`fadeIn`) na revelação dos metadados reais, eliminando layout shift.
+- **Saneamento do Layout no Estado Vazio de Downloads Recentes**:
+  - Correção das regras CSS de `.list .empty-row` e `.row.empty-row` com `grid-column: 1 / -1`, `width: 100%` e `white-space: normal`.
+  - Eliminação definitiva da quebra de linha vertical palavra por palavra, restabelecendo leitura corrida e espaçamento ergonômico.
+
 ## [2.5.0] - 2026-10-15
 
 ### Reformulação Visual Vinil, Telemetria de Armazenamento e Ergonomia da Interface
