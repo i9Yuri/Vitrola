@@ -1,16 +1,21 @@
 /**
  * VITROLA - COMPONENTE SETTINGS MODAL (SettingsModal.js)
- * Painel de Ajustes de tema (Claro, Slate, AMOLED), acentos e governança yt-dlp.
+ * Painel de Ajustes: Temas, Cores de Acento, Armazenamento & Destino e Governança yt-dlp.
  */
 
-import { themeManager, themeEngine } from "../js/theme-manager.js";
+import { themeManager } from "../js/theme-manager.js";
 import { ytdlpManager } from "../js/ytdlp-manager.js";
 
 export class SettingsModal {
-  constructor(modalElement = document.getElementById("modal-settings")) {
-    this.modal = modalElement;
+  constructor(options = {}) {
+    this.modal = options.modalElement || document.getElementById("modal-settings");
+    this.onDestinationChanged = options.onDestinationChanged || (() => {});
+    this.onToast = options.onToast || (() => {});
     this.themeBtns = [];
     this.accentBtns = [];
+    this.destPathEl = null;
+    this.btnChangeDest = null;
+    this.btnRevealDest = null;
     this.init();
   }
 
@@ -18,6 +23,9 @@ export class SettingsModal {
     if (!this.modal) return;
     this.themeBtns = this.modal.querySelectorAll(".theme-btn");
     this.accentBtns = this.modal.querySelectorAll(".accent-btn");
+    this.destPathEl = this.modal.querySelector("#settings-dest-path");
+    this.btnChangeDest = this.modal.querySelector("#btn-settings-change-dest");
+    this.btnRevealDest = this.modal.querySelector("#btn-settings-reveal-dest");
 
     this.themeBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -35,8 +43,73 @@ export class SettingsModal {
       });
     });
 
+    if (this.btnChangeDest) {
+      this.btnChangeDest.addEventListener("click", () => this.handleChangeDestination());
+    }
+
+    if (this.btnRevealDest) {
+      this.btnRevealDest.addEventListener("click", () => this.handleRevealDestination());
+    }
+
     window.addEventListener("themechange", () => this.syncUI());
     this.syncUI();
+  }
+
+  setDestinationPath(path) {
+    if (this.destPathEl) {
+      this.destPathEl.textContent = path || "~/Música/Vitrola";
+      this.destPathEl.title = path || "";
+    }
+  }
+
+  async handleChangeDestination() {
+    try {
+      if (window.electronAPI && typeof window.electronAPI.changeDownloadPath === "function") {
+        const res = await window.electronAPI.changeDownloadPath();
+        if (res && !res.canceled && (res.path || res.selectedPath)) {
+          const newPath = res.path || res.selectedPath;
+          this.setDestinationPath(newPath);
+          this.onDestinationChanged(newPath);
+          this.onToast(`Pasta de destino alterada: ${newPath}`, "success");
+        }
+      } else {
+        // Fallback HTTP runner
+        const res = await fetch("/api/select-folder", { method: "POST" });
+        const data = await res.json();
+        if (data.success && data.path) {
+          this.setDestinationPath(data.path);
+          this.onDestinationChanged(data.path);
+          this.onToast(`Pasta de destino alterada: ${data.path}`, "success");
+        }
+      }
+    } catch (err) {
+      console.warn("[Settings] Erro ao alterar pasta:", err);
+      this.onToast("Falha ao selecionar pasta de destino", "error");
+    }
+  }
+
+  async handleRevealDestination() {
+    try {
+      if (window.electronAPI && typeof window.electronAPI.revealDownloadPath === "function") {
+        await window.electronAPI.revealDownloadPath();
+        this.onToast("Pasta aberta no gerenciador de arquivos", "success");
+      } else {
+        const res = await fetch("/api/open-folder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.onToast("Pasta aberta no gerenciador de arquivos", "success");
+        } else {
+          this.onToast(data.error || "Não foi possível abrir a pasta", "warning");
+        }
+      }
+    } catch (err) {
+      console.warn("[Settings] Erro ao abrir pasta:", err);
+      this.onToast("Erro ao abrir pasta", "error");
+    }
   }
 
   syncUI() {

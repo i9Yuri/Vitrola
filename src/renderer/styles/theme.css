@@ -61,6 +61,15 @@
   --accent: var(--audio);
   --ink: var(--audio-ink);
   --soft: var(--audio-soft);
+
+  /* Variáveis de Compatibilidade Semântica com o Design System Sonora */
+  --disp: "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --acc: var(--accent);
+  --s0: var(--win);
+  --s1: var(--side);
+  --s2: var(--raised);
+  --tx: var(--text);
+  --mut: var(--muted);
 }
 
 /* --------------------------------------------------------------------------

@@ -1,23 +1,17 @@
 /**
  * VITROLA - CONTROLADOR DE INTERFACE (ui-controller.js)
- * Orquestração de eventos, busca com yt-dlp, fila reativa e waveform.
+ * Orquestração de eventos, busca com yt-dlp, telemetria de disco, fila reativa e layout Sonora.
  */
 
 import { themeManager } from "./theme-manager.js";
 import { ytdlpManager } from "./ytdlp-manager.js";
 import { minimizeWindow, maximizeWindow, closeWindow, startWindowDrag } from "../../main/ipc/window-controls.js";
-import { selectDirectory } from "../../main/ipc/filesystem-handler.js";
 import { HistoryModal } from "../components/HistoryModal.js";
 import { TitleBar } from "../components/TitleBar.js";
-
-// Pseudo-random deterministic generator for waveforms
-function createRng(seed) {
-  let s = (seed * 9301 + 49297) % 233280;
-  return function () {
-    s = (s * 9301 + 49297) % 233280;
-    return s / 233280;
-  };
-}
+import { StatusBar } from "../components/StatusBar.js";
+import { Sidebar } from "../components/Sidebar.js";
+import { MediaSearchCard } from "../components/MediaSearchCard.js";
+import { SettingsModal } from "../components/SettingsModal.js";
 
 class UIController {
   constructor() {
@@ -30,17 +24,18 @@ class UIController {
     this.videoRes = "1080p";
     this.embedMetadata = true;
     this.embedSubtitles = false;
-    this.activeTasks = new Map(); // taskId -> { data, eventSource, seed }
+    this.activeTasks = new Map(); // taskId -> { data, eventSource, rowEl, ... }
     this.completedTasks = [];
     this.config = null;
+    this.currentDestinationDir = "";
   }
 
   init() {
     this.cacheDom();
+    this.initComponents();
     this.bindEvents();
     this.initThemes();
     this.initYtDlp();
-    this.initTitleBar();
     this.initMinimizedStateListener();
     this.loadConfig();
     this.loadHistory();
@@ -59,26 +54,39 @@ class UIController {
     }
   }
 
-  initTitleBar() {
+  initComponents() {
+    // Titlebar
     this.titleBar = new TitleBar({
       onWindowAction: (action) => this.handleWindowAction(action),
     });
     this.titleBar.mount();
+
+    // StatusBar
+    this.statusBar = new StatusBar();
+    this.statusBar.mount(document.getElementById("status-bar"));
+    this.statusBar.setVersion("Vitrola v2.3.0");
+
+    // Sidebar
+    this.sidebar = new Sidebar({
+      onViewChange: (view) => this.handleViewChange(view),
+    });
+    this.sidebar.mount();
+
+    // Media Search Card
+    this.mediaSearchCard = new MediaSearchCard();
+    this.mediaSearchCard.mount(document.getElementById("result-card"));
+
+    // Settings Modal
+    this.settingsModal = new SettingsModal({
+      modalElement: this.modalSettings,
+      onDestinationChanged: (newPath) => this.updateDestination(newPath),
+      onToast: (msg, type) => this.showToast(msg, type),
+    });
   }
 
   cacheDom() {
-    // Window controls
-    this.btnMin = document.getElementById("btn-win-min");
-    this.btnMax = document.getElementById("btn-win-max");
-    this.btnClose = document.getElementById("btn-win-close");
-
-    // Nav & Sidebar
-    this.navBtns = document.querySelectorAll(".nav button");
-    this.navQueueCount = document.getElementById("nav-queue-count");
-    this.btnDest = document.getElementById("btn-dest");
-    this.destPath = document.getElementById("dest-path");
-    this.sidebarEngine = document.getElementById("sidebar-engine");
-    this.engineStatusText = document.getElementById("engine-status-text");
+    // Window root
+    this.winRoot = document.querySelector(".window");
 
     // Search bar
     this.searchForm = document.getElementById("search-form");
@@ -92,85 +100,37 @@ class UIController {
     this.cardDur = document.getElementById("card-dur");
     this.cardTitle = document.getElementById("card-title");
     this.cardBy = document.getElementById("card-by");
+    this.cardPlatform = document.getElementById("card-platform");
     this.cardStats = document.getElementById("card-stats");
-    this.modeTiles = document.querySelectorAll(".tile[data-mode]");
-    this.chipsAudioFmt = document.querySelectorAll(".chip-audio-fmt");
-    this.chipsAudioQ = document.querySelectorAll(".chip-audio-q");
-    this.chipsVideoFmt = document.querySelectorAll(".chip-video-fmt");
-    this.chipsVideoRes = document.querySelectorAll(".chip-video-res");
-    this.swAudioMeta = document.getElementById("sw-audio-meta");
-    this.swVideoSubs = document.getElementById("sw-video-subs");
-    this.lblSize = document.getElementById("lbl-size");
+    this.segBtns = document.querySelectorAll(".seg button");
+    this.chipsAudioFmt = document.querySelectorAll(".chips-audio-fmt span");
+    this.chipsAudioQ = document.querySelectorAll(".chips-audio-q span");
+    this.chipsVideoFmt = document.querySelectorAll(".chips-video-fmt span");
+    this.chipsVideoRes = document.querySelectorAll(".chips-video-res span");
+    this.lblSizeA = document.getElementById("lbl-size");
+    this.lblSizeV = document.getElementById("lbl-size-v");
     this.btnGo = document.getElementById("btn-go");
+    this.destPath = document.getElementById("dest-path");
 
-    // Queue
-    this.queueList = document.getElementById("queue-list");
-    this.queueCountHeader = document.getElementById("queue-count-header");
-    this.btnPauseAll = document.getElementById("btn-pause-all");
-    this.btnClearDone = document.getElementById("btn-clear-done");
+    // Recent downloads list
+    this.recentList = document.getElementById("recent-downloads-list");
+    this.btnViewAllHistory = document.getElementById("btn-view-all-history");
 
-    // Modals
+    // Modals & Toast
     this.modalSettings = document.getElementById("modal-settings");
     this.modalLibrary = document.getElementById("modal-library");
     this.libraryList = document.getElementById("library-list");
-    this.modalDest = document.getElementById("modal-dest");
-    this.destModalPath = document.getElementById("dest-modal-path");
-    this.btnDestOpenFolder = document.getElementById("btn-dest-open-folder");
-    this.btnDestChangeFolder = document.getElementById("btn-dest-change-folder");
     this.toast = document.getElementById("toast");
     this.toastMsg = document.getElementById("toast-msg");
 
-    // Settings Modal controls
-    this.themeBtns = document.querySelectorAll(".theme-btn");
-    this.accentBtns = document.querySelectorAll(".accent-btn");
-    this.ytdlpVersionBadge = document.getElementById("ytdlp-version-badge");
+    // Settings Modal triggers
     this.btnCheckYtdlp = document.getElementById("btn-check-ytdlp");
     this.btnUpdateYtdlp = document.getElementById("btn-update-ytdlp");
+    this.ytdlpVersionBadge = document.getElementById("ytdlp-version-badge");
     this.ytdlpLogs = document.getElementById("ytdlp-logs");
   }
 
   bindEvents() {
-    // Window controls
-    if (this.btnMin) this.btnMin.addEventListener("click", () => this.handleWindowAction("minimize"));
-    if (this.btnMax) this.btnMax.addEventListener("click", () => this.handleWindowAction("maximize"));
-    if (this.btnClose) this.btnClose.addEventListener("click", () => this.handleWindowAction("close"));
-
-    // Nav selection
-    this.navBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const view = btn.dataset.view;
-        if (view === "settings") {
-          this.openModal(this.modalSettings);
-        } else if (view === "history" || view === "library") {
-          this.loadHistory();
-          this.openModal(this.modalLibrary);
-        } else {
-          this.navBtns.forEach((b) => b.removeAttribute("aria-current"));
-          btn.setAttribute("aria-current", "page");
-          this.closeModals();
-        }
-      });
-    });
-
-    // Destination folder modal & actions
-    if (this.btnDest) {
-      this.btnDest.addEventListener("click", () => this.openDestModal());
-    }
-    if (this.btnDestOpenFolder) {
-      this.btnDestOpenFolder.addEventListener("click", () => {
-        this.openDestinationFolder();
-        this.closeModals();
-      });
-    }
-    if (this.btnDestChangeFolder) {
-      this.btnDestChangeFolder.addEventListener("click", () => this.changeDestinationFolder());
-    }
-
-    // Engine badge click -> open Settings
-    if (this.sidebarEngine) {
-      this.sidebarEngine.addEventListener("click", () => this.openModal(this.modalSettings));
-    }
-
     // Search & Paste
     if (this.searchForm) {
       this.searchForm.addEventListener("submit", (e) => {
@@ -183,17 +143,20 @@ class UIController {
       this.btnPaste.addEventListener("click", () => this.pasteFromClipboard());
     }
 
-    // Mode tiles (Áudio vs Vídeo)
-    this.modeTiles.forEach((tile) => {
-      tile.addEventListener("click", () => this.setMode(tile.dataset.mode));
+    // Segmented Mode Toggle (Áudio vs Vídeo)
+    this.segBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const mode = btn.dataset.m;
+        this.setMode(mode);
+      });
     });
 
-    // Audio format chips
+    // Audio format chips (MP3, Opus, M4A - RIGOROSAMENTE SEM FLAC)
     this.chipsAudioFmt.forEach((chip) => {
       chip.addEventListener("click", () => {
-        this.chipsAudioFmt.forEach((c) => c.setAttribute("aria-pressed", "false"));
-        chip.setAttribute("aria-pressed", "true");
-        this.audioFormat = chip.dataset.format || chip.textContent.trim();
+        this.chipsAudioFmt.forEach((c) => c.classList.remove("on"));
+        chip.classList.add("on");
+        this.audioFormat = chip.dataset.fmt || chip.textContent.trim();
         this.recalcEstimatedSize();
       });
     });
@@ -201,8 +164,8 @@ class UIController {
     // Audio quality chips
     this.chipsAudioQ.forEach((chip) => {
       chip.addEventListener("click", () => {
-        this.chipsAudioQ.forEach((c) => c.setAttribute("aria-pressed", "false"));
-        chip.setAttribute("aria-pressed", "true");
+        this.chipsAudioQ.forEach((c) => c.classList.remove("on"));
+        chip.classList.add("on");
         this.audioBitrate = parseInt(chip.dataset.bitrate, 10) || 320;
         this.recalcEstimatedSize();
       });
@@ -211,9 +174,9 @@ class UIController {
     // Video format chips
     this.chipsVideoFmt.forEach((chip) => {
       chip.addEventListener("click", () => {
-        this.chipsVideoFmt.forEach((c) => c.setAttribute("aria-pressed", "false"));
-        chip.setAttribute("aria-pressed", "true");
-        this.videoFormat = chip.dataset.format || chip.textContent.trim();
+        this.chipsVideoFmt.forEach((c) => c.classList.remove("on"));
+        chip.classList.add("on");
+        this.videoFormat = chip.dataset.fmt || chip.textContent.trim();
         this.recalcEstimatedSize();
       });
     });
@@ -221,42 +184,24 @@ class UIController {
     // Video res chips
     this.chipsVideoRes.forEach((chip) => {
       chip.addEventListener("click", () => {
-        this.chipsVideoRes.forEach((c) => c.setAttribute("aria-pressed", "false"));
-        chip.setAttribute("aria-pressed", "true");
+        this.chipsVideoRes.forEach((c) => c.classList.remove("on"));
+        chip.classList.add("on");
         this.videoRes = chip.dataset.res || chip.textContent.trim();
         this.recalcEstimatedSize();
       });
     });
-
-    // Switches
-    if (this.swAudioMeta) {
-      this.swAudioMeta.addEventListener("click", () => {
-        const val = this.swAudioMeta.getAttribute("aria-checked") === "true";
-        this.swAudioMeta.setAttribute("aria-checked", String(!val));
-        this.embedMetadata = !val;
-      });
-    }
-
-    if (this.swVideoSubs) {
-      this.swVideoSubs.addEventListener("click", () => {
-        const val = this.swVideoSubs.getAttribute("aria-checked") === "true";
-        this.swVideoSubs.setAttribute("aria-checked", String(!val));
-        this.embedSubtitles = !val;
-      });
-    }
 
     // Go / Download trigger
     if (this.btnGo) {
       this.btnGo.addEventListener("click", () => this.startDownload());
     }
 
-    // Queue buttons
-    if (this.btnPauseAll) {
-      this.btnPauseAll.addEventListener("click", () => this.cancelAllDownloads());
-    }
-
-    if (this.btnClearDone) {
-      this.btnClearDone.addEventListener("click", () => this.clearCompletedDownloads());
+    // View all history link
+    if (this.btnViewAllHistory) {
+      this.btnViewAllHistory.addEventListener("click", () => {
+        this.loadHistory();
+        this.openModal(this.modalLibrary);
+      });
     }
 
     // Modal close backdrops
@@ -265,24 +210,6 @@ class UIController {
         if (e.target === backdrop || e.target.closest(".btn-close-modal")) {
           this.closeModals();
         }
-      });
-    });
-
-    // Settings theme buttons
-    this.themeBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const mode = btn.dataset.mode;
-        themeManager.setThemeMode(mode);
-        this.syncThemeUI();
-      });
-    });
-
-    // Settings accent buttons
-    this.accentBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const color = btn.dataset.color;
-        themeManager.setAccentColor(color);
-        this.syncThemeUI();
       });
     });
 
@@ -295,51 +222,39 @@ class UIController {
     }
   }
 
+  handleViewChange(view) {
+    if (view === "settings") {
+      this.openModal(this.modalSettings);
+    } else if (view === "history") {
+      this.loadHistory();
+      this.openModal(this.modalLibrary);
+    } else {
+      this.closeModals();
+      this.sidebar.setActiveView("home");
+    }
+  }
+
   // --------------------------------------------------------------------------
   // Temas & UI
   // --------------------------------------------------------------------------
   initThemes() {
     themeManager.apply();
-    this.syncThemeUI();
-  }
-
-  syncThemeUI() {
-    const prefs = themeManager.getPreferences();
-    this.themeBtns.forEach((btn) => {
-      const mode = btn.dataset.mode;
-      const isActive =
-        (mode === "dark-amoled" && (prefs.themeMode === "dark-amoled" || prefs.darkVariant === "amoled")) ||
-        (mode === "light" && prefs.themeMode === "light") ||
-        (mode === "dark" && prefs.themeMode === "dark" && prefs.darkVariant !== "amoled");
-      btn.setAttribute("aria-checked", String(isActive));
-    });
-
-    this.accentBtns.forEach((btn) => {
-      const col = btn.dataset.color;
-      const isActive = (prefs.accentColor || "default") === col;
-      btn.setAttribute("aria-checked", String(isActive));
-    });
   }
 
   initYtDlp() {
     ytdlpManager.subscribe((state) => {
-      if (this.engineStatusText) {
-        if (state.status === "checking") {
-          this.engineStatusText.textContent = "Verificando...";
-        } else if (state.status === "updating") {
-          this.engineStatusText.textContent = "Atualizando yt-dlp...";
-        } else if (state.status === "available") {
-          this.engineStatusText.textContent = `v${state.latestVersion} disp.!`;
-        } else if (state.currentVersion && state.currentVersion !== "carregando...") {
-          this.engineStatusText.textContent = `yt-dlp v${state.currentVersion}`;
-        } else {
-          this.engineStatusText.textContent = "yt-dlp em dia";
-        }
+      let statusText = "yt-dlp e ffmpeg prontos";
+      if (state.status === "checking") {
+        statusText = "Verificando yt-dlp...";
+      } else if (state.status === "updating") {
+        statusText = "Atualizando yt-dlp...";
+      } else if (state.status === "available") {
+        statusText = `yt-dlp v${state.latestVersion} disponível`;
+      } else if (state.currentVersion && state.currentVersion !== "carregando...") {
+        statusText = `yt-dlp v${state.currentVersion} e ffmpeg prontos`;
       }
 
-      if (this.sidebarEngine) {
-        this.sidebarEngine.className = `engine ${state.status}`;
-      }
+      this.statusBar.setEngineStatus(state.status, statusText);
 
       if (this.ytdlpVersionBadge) {
         this.ytdlpVersionBadge.textContent = `v${state.currentVersion || "..."}`;
@@ -360,11 +275,11 @@ class UIController {
   }
 
   // --------------------------------------------------------------------------
-  // Config & Pastas
+  // Config, Pastas e Telemetria de Disco
   // --------------------------------------------------------------------------
   async loadConfig() {
     try {
-      // Migração padronizada de chaves legadas e expurgo de resíduos
+      // Migração padronizada de chaves legadas
       try {
         const legacyKeys = ["mediaforge_settings", "mediaforge_config", "fita_config", "mare_settings", "mare_config"];
         let legacyData = null;
@@ -376,75 +291,67 @@ class UIController {
         if (legacyData && !localStorage.getItem("vitrola_settings")) {
           localStorage.setItem("vitrola_settings", legacyData);
         }
-
-        const legacyHist = ["mediaforge_history", "mare_history"];
-        let histData = null;
-        for (const h of legacyHist) {
-          const item = localStorage.getItem(h);
-          if (item && !histData) histData = item;
-          localStorage.removeItem(h);
-        }
-        if (histData && !localStorage.getItem("vitrola_history")) {
-          localStorage.setItem("vitrola_history", histData);
-        }
       } catch (_) {}
 
-      const res = await fetch("/api/config");
-      const data = await res.json();
-      if (data.success && data.config) {
-        this.config = data.config;
-        const dir = data.config.effective_download_dir || data.config.storage?.download_dir || "~/Música/Vitrola";
-        if (this.destPath) {
-          this.destPath.textContent = dir.replace(/\/home\/[^/]+/, "~");
-          this.destPath.title = dir;
+      // Busca do diretório via IPC Electron ou HTTP
+      let dir = "";
+      if (window.electronAPI && typeof window.electronAPI.getDownloadPath === "function") {
+        dir = await window.electronAPI.getDownloadPath();
+      }
+
+      if (!dir) {
+        const res = await fetch("/api/config");
+        const data = await res.json();
+        if (data.success && data.config) {
+          this.config = data.config;
+          dir = data.config.effective_download_dir || data.config.storage?.download_dir || "~/Música/Vitrola";
         }
       }
+
+      this.updateDestination(dir || "~/Música/Vitrola");
     } catch (err) {
       console.warn("[UI] Falha ao carregar configuração:", err);
+      this.updateDestination("~/Música/Vitrola");
     }
   }
 
-  async openDestinationFolder() {
+  updateDestination(dir) {
+    if (!dir) return;
+    this.currentDestinationDir = dir;
+    const displayPath = dir.replace(/\/home\/[^/]+/, "~");
+
+    if (this.destPath) {
+      this.destPath.textContent = displayPath;
+      this.destPath.title = dir;
+    }
+
+    if (this.settingsModal) {
+      this.settingsModal.setDestinationPath(dir);
+    }
+
+    this.loadStorageTelemetry();
+  }
+
+  async loadStorageTelemetry() {
     try {
-      const res = await fetch("/api/open-folder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (data.success) {
-        this.showToast("Pasta aberta no gerenciador de arquivos", "success");
+      let data = null;
+      if (window.electronAPI && typeof window.electronAPI.getDirectoryTelemetry === "function") {
+        data = await window.electronAPI.getDirectoryTelemetry(this.currentDestinationDir);
       } else {
-        this.showToast(data.error || "Não foi possível abrir a pasta", "warning");
+        const res = await fetch("/api/storage/telemetry", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: this.currentDestinationDir }),
+        });
+        const resJson = await res.json();
+        if (resJson.success) data = resJson.data;
+      }
+
+      if (data && this.sidebar) {
+        this.sidebar.updateTelemetry(data);
       }
     } catch (e) {
-      this.showToast("Erro ao abrir pasta", "error");
-    }
-  }
-
-  openDestModal() {
-    const current = this.destPath?.title || "~/Música/Vitrola";
-    if (this.destModalPath) this.destModalPath.textContent = current;
-    this.openModal(this.modalDest);
-  }
-
-  async changeDestinationFolder() {
-    try {
-      const res = await selectDirectory(this.config?.effective_download_dir);
-      if (!res.canceled && (res.path || res.selectedPath)) {
-        const newPath = res.path || res.selectedPath;
-        if (this.destPath) {
-          this.destPath.textContent = newPath.replace(/\/home\/[^/]+/, "~");
-          this.destPath.title = newPath;
-        }
-        if (this.destModalPath) {
-          this.destModalPath.textContent = newPath;
-        }
-        this.showToast(`Pasta de destino alterada: ${newPath}`, "success");
-        this.closeModals();
-      }
-    } catch (e) {
-      this.showToast("Falha ao alterar pasta de destino", "error");
+      console.warn("[UI] Falha na telemetria de disco:", e);
     }
   }
 
@@ -453,7 +360,6 @@ class UIController {
   // --------------------------------------------------------------------------
   setupGlobalPaste() {
     window.addEventListener("keydown", async (e) => {
-      // Ctrl+V ou Cmd+V fora de inputs
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
         const active = document.activeElement;
         const isInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable);
@@ -526,21 +432,21 @@ class UIController {
     this.cardDur.textContent = durationStr;
 
     const views = meta.view_count ? Number(meta.view_count).toLocaleString("pt-BR") : "0";
-    this.cardStats.textContent = `${views} visualizações • ${meta.is_live ? "Transmissão ao vivo" : "Duração: " + durationStr}`;
-
-    // Thumbnail
-    if (meta.thumbnail) {
-      this.cardThumb.innerHTML = `<img src="${meta.thumbnail}" alt="Thumbnail" loading="lazy"><span class="dur">${durationStr}</span>`;
+    if (this.cardStats) {
+      this.cardStats.textContent = `${views} visualizações`;
+    }
+    if (this.cardPlatform) {
+      this.cardPlatform.textContent = meta.extractor || "Web";
     }
 
-    // Auto-detect se é áudio puro (ex: YouTube Music)
+    // Thumbnail no mockup de vinil (.sleeve)
+    if (meta.thumbnail && this.cardThumb) {
+      this.cardThumb.innerHTML = `<img src="${meta.thumbnail}" alt="Thumbnail" loading="lazy"><em id="card-dur">${durationStr}</em>`;
+    }
+
     if (meta.is_music_track && !meta.has_real_video) {
       this.setMode("audio");
-      this.modeTiles.forEach((t) => {
-        if (t.dataset.mode === "video") t.style.opacity = "0.5";
-      });
     } else {
-      this.modeTiles.forEach((t) => (t.style.opacity = "1"));
       this.setMode(this.activeMode || "audio");
     }
 
@@ -549,41 +455,43 @@ class UIController {
 
   setMode(mode) {
     this.activeMode = mode;
-    this.card.setAttribute("data-mode", mode);
-    this.modeTiles.forEach((tile) => {
-      tile.setAttribute("aria-checked", String(tile.dataset.mode === mode));
+    if (this.winRoot) this.winRoot.dataset.mode = mode;
+    if (this.card) this.card.dataset.mode = mode;
+
+    this.segBtns.forEach((btn) => {
+      btn.classList.toggle("on", btn.dataset.m === mode);
     });
+
     this.recalcEstimatedSize();
   }
 
   recalcEstimatedSize() {
     if (!this.currentInspection || !this.currentInspection.metadata) {
-      if (this.lblSize) this.lblSize.textContent = "≈ -- MB";
+      if (this.lblSizeA) this.lblSizeA.textContent = "≈ -- MB";
+      if (this.lblSizeV) this.lblSizeV.textContent = "≈ -- MB";
       return;
     }
 
     const dur = this.currentInspection.metadata.duration || 240;
 
-    if (this.activeMode === "audio") {
-      // Bitrate em kbps (ex: 320, 256, 128)
-      const kbps = this.audioBitrate || 320;
-      const bytes = (kbps * 1000 * dur) / 8;
-      const mb = (bytes / (1024 * 1024)).toFixed(1).replace(".", ",");
-      if (this.lblSize) this.lblSize.textContent = `≈ ${mb} MB`;
-    } else {
-      // Estimativa para vídeo com base na resolução
-      let factor = 0.25; // MB por segundo base para 1080p
-      if (this.videoRes.includes("720")) factor = 0.15;
-      else if (this.videoRes.includes("480")) factor = 0.08;
-      else if (this.videoRes.includes("360")) factor = 0.05;
+    // Áudio
+    const kbps = this.audioBitrate || 320;
+    const bytesA = (kbps * 1000 * dur) / 8;
+    const mbA = (bytesA / (1024 * 1024)).toFixed(1).replace(".", ",");
+    if (this.lblSizeA) this.lblSizeA.textContent = `≈ ${mbA} MB`;
 
-      const approxMb = Math.max(2, Math.round(dur * factor));
-      if (this.lblSize) this.lblSize.textContent = `≈ ${approxMb} MB`;
-    }
+    // Vídeo
+    let factor = 0.25;
+    if (this.videoRes.includes("720")) factor = 0.15;
+    else if (this.videoRes.includes("480")) factor = 0.08;
+    else if (this.videoRes.includes("360")) factor = 0.05;
+
+    const approxMbV = Math.max(2, Math.round(dur * factor));
+    if (this.lblSizeV) this.lblSizeV.textContent = `≈ ${approxMbV} MB`;
   }
 
   // --------------------------------------------------------------------------
-  // Início de Download & Streaming com Waveform
+  // Início de Download
   // --------------------------------------------------------------------------
   async startDownload() {
     if (!this.currentInspection || !this.currentUrl) return;
@@ -600,7 +508,6 @@ class UIController {
       embed_subtitles: this.embedSubtitles,
     };
 
-    // Mapear format_id específico se disponível
     if (this.activeMode === "audio" && this.currentInspection.audio_streams) {
       const match = this.currentInspection.audio_streams.find((s) => s.ext === this.audioFormat.toLowerCase());
       if (match) payload.format_id = match.format_id;
@@ -616,8 +523,8 @@ class UIController {
       const data = await res.json();
 
       if (data.success && data.task_id) {
-        this.showToast("Download adicionado à fila!", "success");
-        this.createQueueItem(data.task_id, payload, this.currentInspection.metadata);
+        this.showToast("Download adicionado à lista!", "success");
+        this.createRecentItem(data.task_id, payload, this.currentInspection.metadata);
         this.listenTaskProgress(data.task_id);
       } else {
         this.showToast(data.error || "Erro ao iniciar download", "error");
@@ -629,100 +536,49 @@ class UIController {
     }
   }
 
-  createQueueItem(taskId, payload, metadata) {
-    const seed = Math.floor(Math.random() * 100) + 1;
-    const item = document.createElement("li");
-    item.className = "dl";
-    item.dataset.mode = payload.mode;
-    item.id = `dl-task-${taskId}`;
+  createRecentItem(taskId, payload, metadata) {
+    const emptyRow = this.recentList.querySelector(".empty-row");
+    if (emptyRow) emptyRow.remove();
 
-    const tagText = payload.mode === "audio" ? `${payload.format} ${this.audioBitrate}` : `${payload.format} ${payload.target_res}p`;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.id = `row-task-${taskId}`;
+
+    const tagText = payload.mode === "audio" ? `${payload.format} ${this.audioBitrate} kbps` : `${payload.format} ${payload.target_res}p`;
     const thumbHtml = metadata.thumbnail
-      ? `<img src="${metadata.thumbnail}" alt="Thumb" loading="lazy">`
-      : `<div style="background:var(--raised);width:100%;height:100%"></div>`;
+      ? `<img src="${metadata.thumbnail}" alt="Capa" loading="lazy">`
+      : "";
 
-    item.innerHTML = `
-      <div class="thumb">${thumbHtml}</div>
-      <div class="dl-body">
-        <div class="dl-top">
-          <span class="dl-title" title="${metadata.title}">${metadata.title}</span>
-          <span class="tag">${tagText}</span>
-        </div>
-        <div class="dl-sub">${metadata.uploader || "Mídia"}</div>
-        <div class="wave" id="wave-${taskId}"></div>
-        <div class="dl-meta">
-          <b id="pct-${taskId}">0%</b>
-          <span id="speed-${taskId}">Iniciando...</span>
-          <span id="eta-${taskId}">--:--</span>
-        </div>
+    row.innerHTML = `
+      <span class="cv">${thumbHtml}</span>
+      <div>
+        <strong title="${metadata.title}">${metadata.title}</strong>
+        <small>${metadata.uploader || "Mídia"}</small>
       </div>
-      <button class="x btn-cancel-task" data-task-id="${taskId}" aria-label="Cancelar download">
-        <svg class="i"><use href="#i-x"/></svg>
+      <span class="tag">${tagText}</span>
+      <div class="st" id="st-${taskId}">
+        <span class="bar"><i id="bar-${taskId}" style="width: 0%"></i></span>
+        <span id="txt-${taskId}">0%</span>
+      </div>
+      <button class="ib btn-cancel-task" data-task-id="${taskId}" aria-label="Cancelar download">
+        <svg class="i"><use href="#x"/></svg>
       </button>
     `;
 
-    // Renderizar forma de onda inicial (0%)
-    const waveEl = item.querySelector(`#wave-${taskId}`);
-    this.renderWaveform(waveEl, seed, 0);
-
-    const cancelBtn = item.querySelector(".btn-cancel-task");
+    const cancelBtn = row.querySelector(".btn-cancel-task");
     cancelBtn.addEventListener("click", () => this.cancelTask(taskId));
 
-    // Inserir no topo da fila
-    const emptyEl = this.queueList.querySelector(".q-empty");
-    if (emptyEl) emptyEl.remove();
-
-    this.queueList.prepend(item);
+    this.recentList.prepend(row);
 
     this.activeTasks.set(taskId, {
       payload,
       metadata,
-      seed,
-      itemEl: item,
-      waveEl,
-      pctEl: item.querySelector(`#pct-${taskId}`),
-      speedEl: item.querySelector(`#speed-${taskId}`),
-      etaEl: item.querySelector(`#eta-${taskId}`),
+      rowEl: row,
+      barEl: row.querySelector(`#bar-${taskId}`),
+      txtEl: row.querySelector(`#txt-${taskId}`),
+      stEl: row.querySelector(`#st-${taskId}`),
       eventSource: null,
     });
-
-    this.updateQueueBadge();
-  }
-
-  // --------------------------------------------------------------------------
-  // ALGORITMO DETERMINÍSTICO DA FORMA DE ONDA (Waveform Progress)
-  // --------------------------------------------------------------------------
-  renderWaveform(waveEl, seed, progressPercent) {
-    if (!waveEl) return;
-    const n = 44;
-    const p = Math.max(0, Math.min(100, progressPercent)) / 100;
-    const cut = Math.round(n * p);
-    const r = createRng(seed);
-
-    if (waveEl.children.length !== n) {
-      waveEl.innerHTML = "";
-      for (let i = 0; i < n; i++) {
-        const env = 0.55 + 0.45 * Math.sin((i / n) * Math.PI * 3.2 + seed);
-        const h = Math.max(0.18, Math.min(1.0, env * (0.55 + 0.45 * r())));
-        const bar = document.createElement("i");
-        bar.style.height = Math.round(h * 100) + "%";
-        waveEl.appendChild(bar);
-      }
-    }
-
-    const bars = waveEl.children;
-    for (let i = 0; i < n; i++) {
-      if (i < cut) {
-        bars[i].className = i === cut - 1 && p < 1 ? "on edge" : "on";
-      } else {
-        bars[i].className = "";
-      }
-    }
-
-    waveEl.setAttribute("role", "progressbar");
-    waveEl.setAttribute("aria-valuenow", String(Math.round(progressPercent)));
-    waveEl.setAttribute("aria-valuemin", "0");
-    waveEl.setAttribute("aria-valuemax", "100");
   }
 
   listenTaskProgress(taskId) {
@@ -737,11 +593,11 @@ class UIController {
         const data = JSON.parse(event.data);
         const pct = data.progress_percent || 0;
 
-        if (task.pctEl) task.pctEl.textContent = `${pct}%`;
-        if (task.speedEl) task.speedEl.textContent = data.speed || "Baixando...";
-        if (task.etaEl) task.etaEl.textContent = data.eta ? `${data.eta}` : "";
-
-        this.renderWaveform(task.waveEl, task.seed, pct);
+        if (task.barEl) task.barEl.style.width = `${pct}%`;
+        if (task.txtEl) {
+          const speed = data.speed ? ` · ${data.speed}` : "";
+          task.txtEl.textContent = `${pct}%${speed}`;
+        }
 
         if (data.status === "completed") {
           es.close();
@@ -755,9 +611,7 @@ class UIController {
       }
     };
 
-    es.onerror = () => {
-      // EventSource reconecta automaticamente
-    };
+    es.onerror = () => {};
   }
 
   markTaskCompleted(taskId, data) {
@@ -766,31 +620,27 @@ class UIController {
 
     this.activeTasks.delete(taskId);
     this.completedTasks.push(data);
-    this.updateQueueBadge();
 
-    const item = task.itemEl;
-    item.className = "dl done";
-    item.dataset.mode = task.payload.mode;
+    const row = task.rowEl;
+    if (row) {
+      if (task.stEl) {
+        task.stEl.className = "st ok";
+        task.stEl.innerHTML = `<svg class="i"><use href="#check"/></svg>Concluído`;
+      }
 
-    const rawSize = data.total_size;
-    const finalSize = (!rawSize || /^(na|n\/a|null|undefined)$/i.test(String(rawSize).trim())) ? "Concluído" : rawSize;
-    item.innerHTML = `
-      <div class="thumb">${task.metadata.thumbnail ? `<img src="${task.metadata.thumbnail}" alt="Thumb">` : ""}</div>
-      <div class="dl-body">
-        <div class="dl-top">
-          <span class="dl-title" title="${task.metadata.title}">${task.metadata.title}</span>
-          <span class="ok"><svg class="i"><use href="#i-check"/></svg>${finalSize}</span>
-        </div>
-        <div class="dl-sub">${task.metadata.uploader || "Mídia"}, ${task.payload.format}</div>
-      </div>
-      <button class="x btn-open-folder" title="Abrir pasta de destino">
-        <svg class="i"><use href="#i-folder"/></svg>
-      </button>
-    `;
+      // Substitui botão de cancelar por botão de abrir pasta
+      const btn = row.querySelector(".btn-cancel-task");
+      if (btn) {
+        btn.className = "ib btn-open-folder";
+        btn.setAttribute("aria-label", "Abrir pasta de destino");
+        btn.innerHTML = `<svg class="i"><use href="#folder"/></svg>`;
+        btn.onclick = () => this.openDestinationFolder();
+      }
+    }
 
-    item.querySelector(".btn-open-folder").addEventListener("click", () => this.openDestinationFolder());
     this.showToast(`Download de "${task.metadata.title}" concluído!`, "success");
     this.loadHistory();
+    this.loadStorageTelemetry();
   }
 
   markTaskFailed(taskId, error) {
@@ -798,23 +648,13 @@ class UIController {
     if (!task) return;
 
     this.activeTasks.delete(taskId);
-    this.updateQueueBadge();
 
-    const item = task.itemEl;
-    item.className = "dl failed";
-    item.innerHTML = `
-      <div class="thumb">${task.metadata.thumbnail ? `<img src="${task.metadata.thumbnail}" alt="Thumb">` : ""}</div>
-      <div class="dl-body">
-        <div class="dl-top">
-          <span class="dl-title" title="${task.metadata.title}">${task.metadata.title}</span>
-          <span class="tag" style="color:var(--danger)">Erro</span>
-        </div>
-        <div class="dl-sub">${error || "Falha na conversão ou download"}</div>
-      </div>
-      <button class="x btn-dismiss-task" title="Remover"><svg class="i"><use href="#i-x"/></svg></button>
-    `;
+    const row = task.rowEl;
+    if (row && task.stEl) {
+      task.stEl.className = "st err";
+      task.stEl.innerHTML = `<svg class="i"><use href="#x"/></svg>Erro`;
+    }
 
-    item.querySelector(".btn-dismiss-task").addEventListener("click", () => item.remove());
     this.showToast(`Falha no download: ${error || "Erro desconhecido"}`, "error");
   }
 
@@ -824,53 +664,36 @@ class UIController {
       task.eventSource.close();
     }
     this.activeTasks.delete(taskId);
-    const item = document.getElementById(`dl-task-${taskId}`);
-    if (item) item.remove();
-    this.updateQueueBadge();
+    const row = document.getElementById(`row-task-${taskId}`);
+    if (row) row.remove();
     this.showToast("Download cancelado", "warning");
   }
 
-  cancelAllDownloads() {
-    this.activeTasks.forEach((task, id) => {
-      if (task.eventSource) task.eventSource.close();
-      if (task.itemEl) task.itemEl.remove();
-    });
-    this.activeTasks.clear();
-    this.updateQueueBadge();
-    this.showToast("Todos os downloads ativos foram pausados/cancelados", "warning");
-  }
-
-  clearCompletedDownloads() {
-    const doneItems = this.queueList.querySelectorAll(".dl.done, .dl.failed");
-    doneItems.forEach((i) => i.remove());
-    if (this.queueList.children.length === 0) {
-      this.queueList.innerHTML = `<li class="q-empty">Nenhum download na fila.</li>`;
-    }
-  }
-
-  updateQueueBadge() {
-    const count = this.activeTasks.size;
-    if (this.navQueueCount) {
-      this.navQueueCount.textContent = count;
-      if (count > 0) {
-        this.navQueueCount.classList.remove("hidden");
+  async openDestinationFolder() {
+    try {
+      if (window.electronAPI && typeof window.electronAPI.revealDownloadPath === "function") {
+        await window.electronAPI.revealDownloadPath();
+        this.showToast("Pasta aberta no gerenciador de arquivos", "success");
       } else {
-        this.navQueueCount.classList.add("hidden");
+        const res = await fetch("/api/open-folder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showToast("Pasta aberta no gerenciador de arquivos", "success");
+        } else {
+          this.showToast(data.error || "Não foi possível abrir a pasta", "warning");
+        }
       }
+    } catch (e) {
+      this.showToast("Erro ao abrir pasta", "error");
     }
-
-    if (this.queueCountHeader) {
-      this.queueCountHeader.textContent = count > 0 ? `${count} em andamento` : "Fila vazia";
-    }
-  }
-
-  scrollToQueue() {
-    const q = document.querySelector(".queue");
-    if (q) q.scrollIntoView({ behavior: "smooth" });
   }
 
   // --------------------------------------------------------------------------
-  // Biblioteca / Histórico
+  // Histórico de Downloads
   // --------------------------------------------------------------------------
   async loadHistory() {
     try {
@@ -890,7 +713,10 @@ class UIController {
         modalElement: this.modalLibrary,
         listElement: this.libraryList,
         onToast: (msg, type) => this.showToast(msg, type),
-        onReload: () => this.loadHistory(),
+        onReload: () => {
+          this.loadHistory();
+          this.loadStorageTelemetry();
+        },
       });
     }
     this.historyModalInstance.render(items);
@@ -933,14 +759,13 @@ class UIController {
         await startWindowDrag();
       }
     } catch (e) {
-      console.warn(`[UI] Erro ao executar ação de janela '${action}':`, e);
+      console.warn(`[UI] Erro ao executar ação de janela :`, e);
     }
   }
 }
 
 export const uiController = new UIController();
 
-// Inicialização defensiva ao carregar o DOM
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
     uiController.init();

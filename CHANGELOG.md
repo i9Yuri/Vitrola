@@ -2,6 +2,29 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.5.0] - 2026-10-15
+
+### Reformulação Visual Vinil, Telemetria de Armazenamento e Ergonomia da Interface
+- **Paradigma Visual Vinil / Sonora de Alta Fidelidade**:
+  - Nova topologia de janela em 3 faixas estruturais (`grid-template-rows: 40px 1fr 32px`): Barra de título nativa integrada de 40px, corpo de aplicação com grid de 208px e 1fr, e barra de status inferior de 32px.
+  - Arte decorativa de disco de vinil giratório (`.disc .vinyl`) com animação contínua `@keyframes spin` e suspensão sob preferência de acessibilidade `prefers-reduced-motion`.
+  - Mockup estilizado de disco saindo da capa (`.result .art` com `.sleeve` e `.rec`) para pré-visualização de mídia com badge de duração embutido.
+  - Barra de pesquisa em pílula flutuante (`.search`) com indicador de atalho de teclado `<kbd>Ctrl V</kbd>`, botão de colar transparente e botão de busca com cor de destaque.
+- **Telemetria de Disco e Armazenamento no Rodapé da Barra Lateral**:
+  - Widget `.disk` com contagem automática em tempo real de faixas de áudio locais, vídeos e tamanho total ocupado (ex.: `12,4 GB` / `850 MB`).
+  - Barra de medição horizontal (`.meter i`) refletindo o percentual de ocupação do diretório de destino.
+  - Novos endpoints de telemetria `storage:getDirectoryTelemetry` no IPC do Electron e `POST /api/storage/telemetry` na API do backend Python.
+- **Centralização da Gestão de Destino nos Ajustes**:
+  - Realocação do controle e diálogo de alteração de pasta de download para a seção dedicada "Armazenamento e Destino" no modal de Ajustes.
+  - Exibição de indicador passivo de destino ("Salvando em: ...") no card de resultado.
+  - Botões para "Alterar Pasta de Destino" via diálogo nativo do sistema e "Abrir no Gerenciador de Arquivos".
+- **Saneamento e Bloqueio de Formatos Fictícios**:
+  - Remoção rigorosa e completa do formato FLAC inexistente em plataformas de streaming web.
+  - Formatos de áudio suportados padronizados: MP3, Opus e M4A.
+  - Formatos de vídeo suportados padronizados: MP4, WebM e MKV.
+- **Barra Inferior de Status do Motor e Versão**:
+  - Rodapé fixo de 32px (`.foot`) com telemetria visual de prontidão do yt-dlp e FFmpeg (`#status-engine`) e versão do aplicativo (`#status-version`).
+
 ## [2.4.0] - 2026-10-15
 
 ### Estabilização do Ciclo de Vida da Janela e Tingimento Tonal Global de Superfícies

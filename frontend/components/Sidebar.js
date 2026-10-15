@@ -1,40 +1,46 @@
 /**
  * VITROLA - COMPONENTE SIDEBAR (Sidebar.js)
- * Navegação simplificada (Baixar, Histórico, Ajustes) e acoplamento do modal de destino.
+ * Navegacao enxuta (Início, Histórico, Ajustes) e widget de telemetria de disco.
  */
 
 export class Sidebar {
   constructor(options = {}) {
     this.onViewChange = options.onViewChange || (() => {});
-    this.onOpenDestinationModal = options.onOpenDestinationModal || (() => {});
+    this.container = null;
+    this.diskSize = null;
+    this.diskMeter = null;
+    this.diskAudioCount = null;
+    this.diskVideoCount = null;
+    this.diskLabel = null;
   }
 
-  mount(container = document.querySelector(".sidebar")) {
+  mount(container = document.querySelector(".side") || document.querySelector(".sidebar")) {
     if (!container) return;
     this.container = container;
-    this.destPath = container.querySelector("#dest-path");
-    this.engineStatus = container.querySelector("#engine-status-text");
+    this.diskSize = container.querySelector("#disk-total-size");
+    this.diskMeter = container.querySelector("#disk-meter-fill");
+    this.diskAudioCount = container.querySelector("#disk-audio-count");
+    this.diskVideoCount = container.querySelector("#disk-video-count");
+    this.diskLabel = container.querySelector("#disk-label");
 
-    const navButtons = container.querySelectorAll(".nav button");
+    const navButtons = container.querySelectorAll("nav a, nav button");
     navButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
         const view = btn.dataset.view;
         this.setActiveView(view);
         this.onViewChange(view);
       });
     });
-
-    const destBtn = container.querySelector("#btn-dest");
-    if (destBtn) {
-      destBtn.addEventListener("click", () => this.onOpenDestinationModal());
-    }
   }
 
   setActiveView(view) {
     if (!this.container) return;
-    const navButtons = this.container.querySelectorAll(".nav button");
+    const navButtons = this.container.querySelectorAll("nav a, nav button");
     navButtons.forEach((b) => {
-      if (b.dataset.view === view) {
+      const isMatch = b.dataset.view === view;
+      b.classList.toggle("on", isMatch);
+      if (isMatch) {
         b.setAttribute("aria-current", "page");
       } else {
         b.removeAttribute("aria-current");
@@ -42,10 +48,20 @@ export class Sidebar {
     });
   }
 
-  setDestination(path) {
-    if (this.destPath) {
-      this.destPath.textContent = path.replace(/\/home\/[^/]+/, "~");
-      this.destPath.title = path;
+  updateTelemetry(data = {}) {
+    if (!data) return;
+    if (this.diskSize && data.totalSizeFormatted) {
+      this.diskSize.textContent = data.totalSizeFormatted;
+    }
+    if (this.diskAudioCount && typeof data.audioCount === "number") {
+      this.diskAudioCount.textContent = `${data.audioCount} faixa${data.audioCount === 1 ? "" : "s"}`;
+    }
+    if (this.diskVideoCount && typeof data.videoCount === "number") {
+      this.diskVideoCount.textContent = `${data.videoCount} vídeo${data.videoCount === 1 ? "" : "s"}`;
+    }
+    if (this.diskMeter && typeof data.usagePercent === "number") {
+      const pct = Math.max(0, Math.min(100, data.usagePercent));
+      this.diskMeter.style.width = `${pct}%`;
     }
   }
 }

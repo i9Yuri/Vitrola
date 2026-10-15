@@ -263,3 +263,75 @@ def select_directory_dialog() -> Dict[str, Any]:
         return {"canceled": False, "path": chosen}
 
     return {"canceled": True, "path": current}
+
+
+def get_directory_telemetry(target_dir: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Returns telemetry for media files in the target download directory.
+    """
+    if target_dir:
+        dir_path = Path(target_dir).expanduser().resolve()
+    else:
+        dir_path = get_download_directory()
+
+    if not dir_path.exists():
+        try:
+            dir_path.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            return {
+                "isAvailable": False,
+                "totalSizeBytes": 0,
+                "formattedSize": "Caminho indisponível",
+                "audioCount": 0,
+                "videoCount": 0,
+                "percentUsed": 0,
+                "path": str(dir_path)
+            }
+
+    audio_exts = {".mp3", ".opus", ".m4a", ".aac", ".wav", ".ogg"}
+    video_exts = {".mp4", ".webm", ".mkv", ".avi", ".mov", ".flv"}
+
+    total_size = 0
+    audio_count = 0
+    video_count = 0
+
+    try:
+        for root, dirs, files in os.walk(dir_path):
+            dirs[:] = [d for d in dirs if not d.startswith(".")]
+            for f in files:
+                ext = Path(f).suffix.lower()
+                fp = Path(root) / f
+                if ext in audio_exts:
+                    audio_count += 1
+                    try:
+                        total_size += fp.stat().st_size
+                    except Exception:
+                        pass
+                elif ext in video_exts:
+                    video_count += 1
+                    try:
+                        total_size += fp.stat().st_size
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+    percent_used = 20
+    try:
+        stat = os.statvfs(str(dir_path))
+        total_blocks = stat.f_blocks
+        free_blocks = stat.f_bfree
+        if total_blocks > 0:
+            percent_used = max(1, min(100, int(((total_blocks - free_blocks) / total_blocks) * 100)))
+    except Exception:
+        pass
+
+    return {
+        "isAvailable": True,
+        "totalSizeBytes": total_size,
+        "formattedSize": format_size_bytes(total_size),
+        "audioCount": audio_count,
+        "videoCount": video_count,
+        "percentUsed": percent_used,
+        "path": str(dir_path)
+    }

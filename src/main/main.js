@@ -7,6 +7,7 @@
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const { getStorageTelemetry } = require('./ipc/storage-telemetry');
 
 const DIAGNOSTICS_DIR = path.join(__dirname, '../../_dev/diagnostics');
 const LOG_FILE = path.join(DIAGNOSTICS_DIR, 'boot.log');
@@ -233,6 +234,48 @@ function registerIpcHandlers() {
         return { success: true, path: result.filePaths[0] };
       }
       return { success: false, canceled: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // storage:getDirectoryTelemetry
+  ipcMain.handle('storage:getDirectoryTelemetry', async (event, customPath) => {
+    const dir = customPath || getDefaultDownloadPath();
+    return await getStorageTelemetry(dir);
+  });
+
+  // settings:getDownloadPath
+  ipcMain.handle('settings:getDownloadPath', async () => {
+    return getDefaultDownloadPath();
+  });
+
+  // settings:changeDownloadPath
+  ipcMain.handle('settings:changeDownloadPath', async (event, currentPath) => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Vitrola — Selecionar pasta de destino',
+        defaultPath: currentPath || getDefaultDownloadPath(),
+        properties: ['openDirectory', 'createDirectory']
+      });
+      if (!result.canceled && result.filePaths && result.filePaths[0]) {
+        return { canceled: false, newPath: result.filePaths[0] };
+      }
+      return { canceled: true };
+    } catch (err) {
+      return { canceled: true, error: err.message };
+    }
+  });
+
+  // settings:revealDownloadPath
+  ipcMain.handle('settings:revealDownloadPath', async (event, targetPath) => {
+    const dirToOpen = targetPath || getDefaultDownloadPath();
+    try {
+      if (!fs.existsSync(dirToOpen)) {
+        fs.mkdirSync(dirToOpen, { recursive: true });
+      }
+      await shell.openPath(dirToOpen);
+      return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }

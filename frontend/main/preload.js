@@ -25,6 +25,10 @@ const electronAPI = {
   openDirectory: (dirPath) => ipcRenderer.invoke('storage:openTargetDirectory', dirPath),
   selectDirectory: (currentPath) => ipcRenderer.invoke('storage:updateTargetDirectory', currentPath),
   checkAndShowItem: (filePath) => ipcRenderer.invoke('storage:openTargetDirectory', filePath),
+  getDirectoryTelemetry: (dirPath) => ipcRenderer.invoke('storage:getDirectoryTelemetry', dirPath),
+  getDownloadPath: () => ipcRenderer.invoke('settings:getDownloadPath'),
+  changeDownloadPath: (currentPath) => ipcRenderer.invoke('settings:changeDownloadPath', currentPath),
+  revealDownloadPath: (dirPath) => ipcRenderer.invoke('settings:revealDownloadPath', dirPath),
 
   // System & App Metadata
   getAppMetadata: () => ipcRenderer.invoke('system:getAppMetadata'),

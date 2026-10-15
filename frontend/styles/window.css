@@ -18,7 +18,7 @@ body {
   place-items: initial;
 }
 
-/* Container raiz ocupa 100% da viewport nativa */
+/* Container raiz ocupa 100% da viewport nativa com topologia em 3 faixas */
 .window {
   width: 100vw !important;
   height: 100vh !important;
@@ -28,8 +28,8 @@ body {
   border-radius: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  display: flex;
-  flex-direction: column;
+  display: grid !important;
+  grid-template-rows: 40px 1fr 32px !important;
   overflow: hidden;
   position: relative;
   background: var(--win);

@@ -93,6 +93,10 @@ class VitrolaHandler(BaseHTTPRequestHandler):
         elif path == "/app.js":
             self._serve_file(FRONTEND_DIR / "app.js", "application/javascript; charset=utf-8")
             return
+        elif path == "/api/storage/telemetry":
+            from backend.core.system import get_directory_telemetry
+            self._send_json(get_directory_telemetry(), 200)
+            return
 
         # Fallback for any relative asset in frontend/
         safe_rel = path.lstrip("/")
@@ -144,6 +148,13 @@ class VitrolaHandler(BaseHTTPRequestHandler):
             target_path = body.get("path")
             res = open_in_file_manager(target_path)
             self._send_json(res, 200 if res.get("success") else 500)
+            return
+
+        # 3.0 API: Storage Telemetry
+        if path == "/api/storage/telemetry":
+            from backend.core.system import get_directory_telemetry
+            target_path = body.get("path")
+            self._send_json(get_directory_telemetry(target_path), 200)
             return
 
         # 3.1 API: Select Folder Native Dialog
