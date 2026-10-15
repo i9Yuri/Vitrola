@@ -16,9 +16,27 @@ export class TitleBar {
     const btnMax = container.querySelector("#btn-win-max");
     const btnClose = container.querySelector("#btn-win-close");
 
-    if (btnMin) btnMin.addEventListener("click", () => this.onWindowAction("minimize"));
-    if (btnMax) btnMax.addEventListener("click", () => this.onWindowAction("maximize"));
-    if (btnClose) btnClose.addEventListener("click", () => this.onWindowAction("close"));
+    if (btnMin) {
+      btnMin.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.onWindowAction("minimize");
+      });
+    }
+    if (btnMax) {
+      btnMax.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.onWindowAction("maximize");
+      });
+    }
+    if (btnClose) {
+      btnClose.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.onWindowAction("close");
+      });
+    }
 
     // Duplo clique na barra de título alterna maximização
     container.addEventListener("dblclick", (e) => {

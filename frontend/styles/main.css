@@ -97,7 +97,13 @@ svg.i {
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--brand-title-color, var(--text));
   -webkit-app-region: no-drag;
+}
+
+.brand-title {
+  color: var(--brand-title-color, var(--text));
+  transition: color 0.2s ease;
 }
 
 .mark {
@@ -110,12 +116,12 @@ svg.i {
 .mark i {
   width: 3.5px;
   border-radius: 2px;
-  background: var(--audio);
+  background: var(--brand-mark-primary, var(--accent));
   transition: height 0.3s ease, background-color 0.2s ease;
 }
 
 .mark i:nth-child(n+4) {
-  background: var(--video);
+  background: var(--brand-mark-secondary, var(--video));
 }
 
 .tb-actions {
@@ -222,6 +228,7 @@ svg.i {
   background: var(--raised);
   color: var(--text);
   font-weight: 600;
+  border-left: 2.5px solid var(--accent);
 }
 
 .count {
@@ -371,13 +378,13 @@ h1 {
 }
 
 .linkbar:focus-within {
-  border-color: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--soft);
 }
 
 html[data-theme="light"] .linkbar:focus-within {
-  border-color: rgba(0, 0, 0, 0.35);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--soft);
 }
 
 .linkbar > svg {
@@ -649,7 +656,7 @@ kbd {
 
 .chip:hover {
   color: var(--text);
-  border-color: var(--line-strong);
+  border-color: var(--accent);
 }
 
 .chip[aria-pressed="true"] {

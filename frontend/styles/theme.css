@@ -30,22 +30,32 @@
   --accent-amber: #FFB547;
   --accent-amber-ink: #2A1A00;
   --accent-amber-soft: rgba(255, 181, 71, 0.14);
+  --accent-amber-secondary: #FFE15D;
 
   --accent-violet: #8E96FF;
   --accent-violet-ink: #0D1038;
   --accent-violet-soft: rgba(142, 150, 255, 0.16);
+  --accent-violet-secondary: #A5B4FC;
 
   --accent-emerald: #10B981;
   --accent-emerald-ink: #022C22;
   --accent-emerald-soft: rgba(16, 185, 129, 0.15);
+  --accent-emerald-secondary: #34D399;
 
   --accent-rose: #F43F5E;
   --accent-rose-ink: #4C0519;
   --accent-rose-soft: rgba(244, 63, 94, 0.15);
+  --accent-rose-secondary: #FB7185;
 
   --accent-cyan: #06B6D4;
   --accent-cyan-ink: #083344;
   --accent-cyan-soft: rgba(6, 182, 212, 0.15);
+  --accent-cyan-secondary: #38BDF8;
+
+  /* Identidade de Marca e Branding Dinâmico */
+  --brand-mark-primary: var(--accent);
+  --brand-mark-secondary: var(--video);
+  --brand-title-color: var(--text);
 
   /* Acento padrão ativo: herda do modo de mídia (áudio inicial) */
   --accent: var(--audio);
@@ -82,16 +92,16 @@ html[data-theme="dark"] {
 }
 
 /* --------------------------------------------------------------------------
-   Superfícies: Modo Escuro AMOLED (Pure Black #000000)
+   Superfícies: Modo Escuro AMOLED (Pure Black #000000 Estrito)
    -------------------------------------------------------------------------- */
 html[data-theme="dark-amoled"],
 html[data-dark-variant="amoled"] {
   color-scheme: dark;
 
   --desk: #000000;
-  --win: #050505;
+  --win: #000000;
   --side: #000000;
-  --surface: #0A0A0A;
+  --surface: #050505;
   --raised: #141414;
   --overlay: rgba(0, 0, 0, 0.88);
 
@@ -159,44 +169,322 @@ html[data-theme="light"] {
   --soft: var(--video-soft);
 }
 
-/* Sobrescrita de Acento Fixo (se selecionado pelo usuário nas preferências) */
+/* ==========================================================================
+   MATRIZ DE TINGIMENTO TONAL GLOBAL DE SUPERFÍCIES (Por Cor-Tema)
+   ========================================================================== */
+
+/* 1. Âmbar (Amber) */
 html[data-accent="amber"],
-html[data-accent="amber"] [data-mode] {
+html[data-accent-color="amber"],
+html[data-theme-color="amber"] {
   --accent: var(--accent-amber);
   --ink: var(--accent-amber-ink);
   --soft: var(--accent-amber-soft);
   --audio: var(--accent-amber);
   --audio-ink: var(--accent-amber-ink);
   --audio-soft: var(--accent-amber-soft);
+  --brand-mark-primary: var(--accent-amber);
+  --brand-mark-secondary: var(--accent-amber-secondary);
 }
 
+/* Modo Escuro Neutro tingido por Âmbar */
+html[data-theme="dark"][data-accent="amber"],
+html[data-theme="dark"][data-accent-color="amber"],
+html[data-theme="dark"][data-theme-color="amber"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-accent="amber"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-accent-color="amber"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-theme-color="amber"] {
+  --win: #1c1a17;
+  --surface: #25221d;
+  --raised: #332f28;
+  --desk: #282520;
+  --side: #171512;
+  --line: rgba(255, 181, 71, 0.10);
+  --line-strong: rgba(255, 181, 71, 0.18);
+  --brand-title-color: #F8F5EE;
+}
+
+/* Modo Escuro AMOLED tingido por Âmbar (Preto puro #000000 rigoroso) */
+html[data-theme="dark-amoled"][data-accent="amber"],
+html[data-theme="dark-amoled"][data-accent-color="amber"],
+html[data-theme="dark-amoled"][data-theme-color="amber"],
+html[data-dark-variant="amoled"][data-accent="amber"],
+html[data-dark-variant="amoled"][data-accent-color="amber"],
+html[data-dark-variant="amoled"][data-theme-color="amber"] {
+  --win: #000000;
+  --desk: #000000;
+  --side: #000000;
+  --surface: #050505;
+  --raised: #1f1b13;
+  --line: rgba(255, 181, 71, 0.16);
+  --line-strong: rgba(255, 181, 71, 0.28);
+  --brand-title-color: #FFFFFF;
+}
+
+/* Modo Claro tingido por Âmbar */
+html[data-theme="light"][data-accent="amber"],
+html[data-theme="light"][data-accent-color="amber"],
+html[data-theme="light"][data-theme-color="amber"] {
+  --win: #faf8f5;
+  --surface: #f1ede4;
+  --raised: #e6dfd3;
+  --desk: #edeae4;
+  --side: #f3f0ea;
+  --text: #262217;
+  --muted: #6b5c3e;
+  --dim: #8f8061;
+  --line: rgba(74, 53, 10, 0.09);
+  --line-strong: rgba(74, 53, 10, 0.16);
+  --brand-title-color: #92400e;
+}
+
+/* 2. Violeta (Violet) */
 html[data-accent="violet"],
-html[data-accent="violet"] [data-mode] {
+html[data-accent-color="violet"],
+html[data-theme-color="violet"] {
   --accent: var(--accent-violet);
   --ink: var(--accent-violet-ink);
   --soft: var(--accent-violet-soft);
   --video: var(--accent-violet);
   --video-ink: var(--accent-violet-ink);
   --video-soft: var(--accent-violet-soft);
+  --brand-mark-primary: var(--accent-violet);
+  --brand-mark-secondary: var(--accent-violet-secondary);
 }
 
+/* Modo Escuro Neutro tingido por Violeta */
+html[data-theme="dark"][data-accent="violet"],
+html[data-theme="dark"][data-accent-color="violet"],
+html[data-theme="dark"][data-theme-color="violet"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-accent="violet"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-accent-color="violet"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-theme-color="violet"] {
+  --win: #161821;
+  --surface: #1d202b;
+  --raised: #282c3c;
+  --desk: #22242e;
+  --side: #111218;
+  --line: rgba(142, 150, 255, 0.10);
+  --line-strong: rgba(142, 150, 255, 0.18);
+  --brand-title-color: #F1F2FD;
+}
+
+/* Modo Escuro AMOLED tingido por Violeta (#000000 rigoroso) */
+html[data-theme="dark-amoled"][data-accent="violet"],
+html[data-theme="dark-amoled"][data-accent-color="violet"],
+html[data-theme="dark-amoled"][data-theme-color="violet"],
+html[data-dark-variant="amoled"][data-accent="violet"],
+html[data-dark-variant="amoled"][data-accent-color="violet"],
+html[data-dark-variant="amoled"][data-theme-color="violet"] {
+  --win: #000000;
+  --desk: #000000;
+  --side: #000000;
+  --surface: #050505;
+  --raised: #141521;
+  --line: rgba(142, 150, 255, 0.18);
+  --line-strong: rgba(142, 150, 255, 0.30);
+  --brand-title-color: #FFFFFF;
+}
+
+/* Modo Claro tingido por Violeta */
+html[data-theme="light"][data-accent="violet"],
+html[data-theme="light"][data-accent-color="violet"],
+html[data-theme="light"][data-theme-color="violet"] {
+  --win: #f7f8fc;
+  --surface: #eceef5;
+  --raised: #dde1ee;
+  --desk: #eaebee;
+  --side: #f0f2f8;
+  --text: #181b28;
+  --muted: #575a74;
+  --dim: #797c98;
+  --line: rgba(24, 27, 40, 0.09);
+  --line-strong: rgba(24, 27, 40, 0.16);
+  --brand-title-color: #4338ca;
+}
+
+/* 3. Esmeralda (Emerald) */
 html[data-accent="emerald"],
-html[data-accent="emerald"] [data-mode] {
+html[data-accent-color="emerald"],
+html[data-theme-color="emerald"] {
   --accent: var(--accent-emerald);
   --ink: var(--accent-emerald-ink);
   --soft: var(--accent-emerald-soft);
+  --brand-mark-primary: var(--accent-emerald);
+  --brand-mark-secondary: var(--accent-emerald-secondary);
 }
 
+/* Modo Escuro Neutro tingido por Esmeralda */
+html[data-theme="dark"][data-accent="emerald"],
+html[data-theme="dark"][data-accent-color="emerald"],
+html[data-theme="dark"][data-theme-color="emerald"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-accent="emerald"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-accent-color="emerald"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-theme-color="emerald"] {
+  --win: #161d1a;
+  --surface: #1d2521;
+  --raised: #26332c;
+  --desk: #202624;
+  --side: #111714;
+  --line: rgba(16, 185, 129, 0.10);
+  --line-strong: rgba(16, 185, 129, 0.18);
+  --brand-title-color: #EEF8F3;
+}
+
+/* Modo Escuro AMOLED tingido por Esmeralda (#000000 rigoroso) */
+html[data-theme="dark-amoled"][data-accent="emerald"],
+html[data-theme="dark-amoled"][data-accent-color="emerald"],
+html[data-theme="dark-amoled"][data-theme-color="emerald"],
+html[data-dark-variant="amoled"][data-accent="emerald"],
+html[data-dark-variant="amoled"][data-accent-color="emerald"],
+html[data-dark-variant="amoled"][data-theme-color="emerald"] {
+  --win: #000000;
+  --desk: #000000;
+  --side: #000000;
+  --surface: #050505;
+  --raised: #14211a;
+  --line: rgba(16, 185, 129, 0.18);
+  --line-strong: rgba(16, 185, 129, 0.30);
+  --brand-title-color: #FFFFFF;
+}
+
+/* Modo Claro tingido por Esmeralda */
+html[data-theme="light"][data-accent="emerald"],
+html[data-theme="light"][data-accent-color="emerald"],
+html[data-theme="light"][data-theme-color="emerald"] {
+  --win: #f6f9f7;
+  --surface: #ebf1ee;
+  --raised: #dbe5e0;
+  --desk: #e8ecea;
+  --side: #f0f5f2;
+  --text: #14221b;
+  --muted: #4e6357;
+  --dim: #71887c;
+  --line: rgba(20, 34, 27, 0.09);
+  --line-strong: rgba(20, 34, 27, 0.16);
+  --brand-title-color: #047857;
+}
+
+/* 4. Carmim (Rose) */
 html[data-accent="rose"],
-html[data-accent="rose"] [data-mode] {
+html[data-accent-color="rose"],
+html[data-theme-color="rose"] {
   --accent: var(--accent-rose);
   --ink: var(--accent-rose-ink);
   --soft: var(--accent-rose-soft);
+  --brand-mark-primary: var(--accent-rose);
+  --brand-mark-secondary: var(--accent-rose-secondary);
 }
 
+/* Modo Escuro Neutro tingido por Carmim */
+html[data-theme="dark"][data-accent="rose"],
+html[data-theme="dark"][data-accent-color="rose"],
+html[data-theme="dark"][data-theme-color="rose"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-accent="rose"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-accent-color="rose"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-theme-color="rose"] {
+  --win: #1e1517;
+  --surface: #261c1e;
+  --raised: #352629;
+  --desk: #272022;
+  --side: #181012;
+  --line: rgba(244, 63, 94, 0.10);
+  --line-strong: rgba(244, 63, 94, 0.18);
+  --brand-title-color: #FAF0F2;
+}
+
+/* Modo Escuro AMOLED tingido por Carmim (#000000 rigoroso) */
+html[data-theme="dark-amoled"][data-accent="rose"],
+html[data-theme="dark-amoled"][data-accent-color="rose"],
+html[data-theme="dark-amoled"][data-theme-color="rose"],
+html[data-dark-variant="amoled"][data-accent="rose"],
+html[data-dark-variant="amoled"][data-accent-color="rose"],
+html[data-dark-variant="amoled"][data-theme-color="rose"] {
+  --win: #000000;
+  --desk: #000000;
+  --side: #000000;
+  --surface: #050505;
+  --raised: #211316;
+  --line: rgba(244, 63, 94, 0.18);
+  --line-strong: rgba(244, 63, 94, 0.30);
+  --brand-title-color: #FFFFFF;
+}
+
+/* Modo Claro tingido por Carmim */
+html[data-theme="light"][data-accent="rose"],
+html[data-theme="light"][data-accent-color="rose"],
+html[data-theme="light"][data-theme-color="rose"] {
+  --win: #faf6f7;
+  --surface: #f2eaec;
+  --raised: #e7dbe0;
+  --desk: #ece8e9;
+  --side: #f5eff1;
+  --text: #28161a;
+  --muted: #6e4c53;
+  --dim: #906e75;
+  --line: rgba(40, 22, 26, 0.09);
+  --line-strong: rgba(40, 22, 26, 0.16);
+  --brand-title-color: #be123c;
+}
+
+/* 5. Ciano (Cyan) */
 html[data-accent="cyan"],
-html[data-accent="cyan"] [data-mode] {
+html[data-accent-color="cyan"],
+html[data-theme-color="cyan"] {
   --accent: var(--accent-cyan);
   --ink: var(--accent-cyan-ink);
   --soft: var(--accent-cyan-soft);
+  --brand-mark-primary: var(--accent-cyan);
+  --brand-mark-secondary: var(--accent-cyan-secondary);
+}
+
+/* Modo Escuro Neutro tingido por Ciano */
+html[data-theme="dark"][data-accent="cyan"],
+html[data-theme="dark"][data-accent-color="cyan"],
+html[data-theme="dark"][data-theme-color="cyan"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-accent="cyan"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-accent-color="cyan"],
+html:not([data-theme="light"]):not([data-theme="dark-amoled"])[data-theme-color="cyan"] {
+  --win: #151b1e;
+  --surface: #1b2327;
+  --raised: #243036;
+  --desk: #1f2527;
+  --side: #101618;
+  --line: rgba(6, 182, 212, 0.10);
+  --line-strong: rgba(6, 182, 212, 0.18);
+  --brand-title-color: #EEF8FA;
+}
+
+/* Modo Escuro AMOLED tingido por Ciano (#000000 rigoroso) */
+html[data-theme="dark-amoled"][data-accent="cyan"],
+html[data-theme="dark-amoled"][data-accent-color="cyan"],
+html[data-theme="dark-amoled"][data-theme-color="cyan"],
+html[data-dark-variant="amoled"][data-accent="cyan"],
+html[data-dark-variant="amoled"][data-accent-color="cyan"],
+html[data-dark-variant="amoled"][data-theme-color="cyan"] {
+  --win: #000000;
+  --desk: #000000;
+  --side: #000000;
+  --surface: #050505;
+  --raised: #121e23;
+  --line: rgba(6, 182, 212, 0.18);
+  --line-strong: rgba(6, 182, 212, 0.30);
+  --brand-title-color: #FFFFFF;
+}
+
+/* Modo Claro tingido por Ciano */
+html[data-theme="light"][data-accent="cyan"],
+html[data-theme="light"][data-accent-color="cyan"],
+html[data-theme="light"][data-theme-color="cyan"] {
+  --win: #f5f9fa;
+  --surface: #eaf1f3;
+  --raised: #d9e4e7;
+  --desk: #e8ebec;
+  --side: #eff5f7;
+  --text: #132227;
+  --muted: #4b6269;
+  --dim: #6d868d;
+  --line: rgba(19, 34, 39, 0.09);
+  --line-strong: rgba(19, 34, 39, 0.16);
+  --brand-title-color: #0e7490;
 }

@@ -68,9 +68,15 @@ class ThemeManager {
 
     if (accentColor && accentColor !== "default") {
       root.setAttribute("data-accent", accentColor);
+      root.setAttribute("data-accent-color", accentColor);
+      root.setAttribute("data-theme-color", accentColor);
     } else {
       root.removeAttribute("data-accent");
+      root.removeAttribute("data-accent-color");
+      root.removeAttribute("data-theme-color");
     }
+
+    this.syncBrandAssets(accentColor);
 
     // Dispara evento global para sincronização de componentes de interface
     window.dispatchEvent(
@@ -78,24 +84,49 @@ class ThemeManager {
     );
   }
 
-  setThemeMode(mode) {
-    if (mode === "dark-amoled") {
-      this.preferences.themeMode = "dark-amoled";
-      this.preferences.darkVariant = "amoled";
-    } else if (mode === "light") {
-      this.preferences.themeMode = "light";
-    } else {
-      this.preferences.themeMode = "dark";
-      this.preferences.darkVariant = "slate";
+  /**
+   * Contrato themeEngine:applyTheme(themeMode, themeColor)
+   */
+  applyTheme(themeMode, themeColor) {
+    if (themeMode) {
+      if (themeMode === "dark-amoled") {
+        this.preferences.themeMode = "dark-amoled";
+        this.preferences.darkVariant = "amoled";
+      } else if (themeMode === "light") {
+        this.preferences.themeMode = "light";
+      } else {
+        this.preferences.themeMode = "dark";
+        this.preferences.darkVariant = "slate";
+      }
+    }
+    if (themeColor !== undefined) {
+      this.preferences.accentColor = themeColor || "default";
     }
     this.savePreferences();
     this.apply();
   }
 
+  /**
+   * Contrato themeEngine:syncBrandAssets(accentColor)
+   */
+  syncBrandAssets(accentColor) {
+    const col = accentColor || this.preferences.accentColor;
+    const root = document.documentElement;
+    if (col && col !== "default") {
+      root.style.setProperty("--brand-mark-primary", `var(--accent-${col}, var(--accent))`);
+      root.style.setProperty("--brand-mark-secondary", `var(--accent-${col}-secondary, var(--video))`);
+    } else {
+      root.style.removeProperty("--brand-mark-primary");
+      root.style.removeProperty("--brand-mark-secondary");
+    }
+  }
+
+  setThemeMode(mode) {
+    this.applyTheme(mode, undefined);
+  }
+
   setAccentColor(color) {
-    this.preferences.accentColor = color || "default";
-    this.savePreferences();
-    this.apply();
+    this.applyTheme(undefined, color);
   }
 
   getPreferences() {
@@ -104,6 +135,7 @@ class ThemeManager {
 }
 
 export const themeManager = new ThemeManager();
+export const themeEngine = themeManager;
 
 /**
  * Script síncrono para execução imediata no <head> evitando FOUC (Flash of Unstyled Content)
@@ -125,6 +157,8 @@ export function injectEarlyThemeBootstrap() {
       }
       if (prefs.accentColor && prefs.accentColor !== "default") {
         root.setAttribute("data-accent", prefs.accentColor);
+        root.setAttribute("data-accent-color", prefs.accentColor);
+        root.setAttribute("data-theme-color", prefs.accentColor);
       }
     }
   } catch (_) {}

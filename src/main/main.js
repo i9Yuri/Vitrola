@@ -79,6 +79,10 @@ function getDefaultDownloadPath() {
 
 // 2. Flags de Compatibilidade Gráfica e Compositores Linux (Wayland / X11)
 if (app) {
+  // Prevenção de suspensão de renderização e descarte de contexto gráfico
+  app.commandLine.appendSwitch('disable-renderer-backgrounding');
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+
   if (process.platform === 'linux') {
     try {
       app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
@@ -95,6 +99,67 @@ if (app) {
     }
   }
 }
+
+/**
+ * Pool de subprocessos ativos e Controlador de Ciclo de Vida da Janela
+ */
+const activeProcessesPool = new Set();
+
+const windowController = {
+  minimizeWindow(win) {
+    if (!win || (win.isDestroyed && win.isDestroyed())) return;
+    setImmediate(() => {
+      try {
+        if (win && !win.isDestroyed()) {
+          win.minimize();
+        }
+      } catch (err) {
+        logStartupDiagnostic('windowController:minimizeWindow', { message: err.message });
+      }
+    });
+  },
+
+  terminateAppGracefully(win) {
+    console.log('\x1b[33m[LIFECYCLE] Executando encerramento gracioso desacoplado...\x1b[0m');
+    // a) Disparar interrupção imediata não bloqueante sobre processos do pool
+    try {
+      for (const proc of activeProcessesPool) {
+        if (proc && !proc.killed) {
+          try {
+            proc.kill('SIGTERM');
+          } catch (_) {}
+        }
+      }
+      activeProcessesPool.clear();
+    } catch (poolErr) {
+      logStartupDiagnostic('terminateAppGracefully:procPool', { message: poolErr.message });
+    }
+
+    // b) Remover listeners de eventos de IPC e da janela para prevenir chamadas concorrentes
+    try {
+      if (ipcMain) {
+        ipcMain.removeAllListeners();
+      }
+      if (win && !win.isDestroyed()) {
+        win.removeAllListeners();
+      }
+    } catch (listenerErr) {
+      logStartupDiagnostic('terminateAppGracefully:removeListeners', { message: listenerErr.message });
+    }
+
+    // c) Destruir atômica e imediatamente a janela e encerrar a aplicação (< 300ms)
+    setImmediate(() => {
+      try {
+        if (win && !win.isDestroyed()) {
+          win.destroy();
+        }
+      } catch (_) {}
+      if (app) {
+        app.quit();
+      }
+    });
+  }
+};
 
 /**
  * Contrato de Verificação de Bootstrap (Main Process)
@@ -176,7 +241,7 @@ function registerIpcHandlers() {
   // window controls IPC
   ipcMain.handle('window:minimize', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.minimize();
+    if (win) windowController.minimizeWindow(win);
     return { success: true, action: 'minimize' };
   });
 
@@ -196,7 +261,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('window:closeApp', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.close();
+    if (win) windowController.terminateAppGracefully(win);
     return { success: true, action: 'close' };
   });
 
@@ -204,7 +269,7 @@ function registerIpcHandlers() {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return { success: false, error: 'Janela não encontrada' };
     if (action === 'minimize') {
-      win.minimize();
+      windowController.minimizeWindow(win);
       return { success: true, action: 'minimize' };
     } else if (action === 'maximize') {
       if (win.isMaximized()) {
@@ -215,7 +280,7 @@ function registerIpcHandlers() {
         return { success: true, isMaximized: true };
       }
     } else if (action === 'close') {
-      win.close();
+      windowController.terminateAppGracefully(win);
       return { success: true, action: 'close' };
     } else if (action === 'start_drag') {
       return { success: true, action: 'start_drag' };
@@ -283,6 +348,23 @@ function createSecureMainWindow(options = {}) {
         logStartupDiagnostic('openDevTools', { message: devErr.message });
       }
     }
+  });
+
+  // Interceptação de eventos para mitigar suspensão de GPU e context drop no Linux
+  win.on('minimize', () => {
+    try {
+      if (!win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+        win.webContents.send('window:minimized-state', true);
+      }
+    } catch (_) {}
+  });
+
+  win.on('restore', () => {
+    try {
+      if (!win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+        win.webContents.send('window:minimized-state', false);
+      }
+    } catch (_) {}
   });
 
   // 2. Telemetria de Falhas no Ciclo de Vida do WebContents
@@ -401,4 +483,6 @@ module.exports = {
   logStartupDiagnostic,
   validateStartupPrerequisites,
   createSecureMainWindow,
+  windowController,
+  activeProcessesPool
 };

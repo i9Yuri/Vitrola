@@ -2,6 +2,26 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.4.0] - 2026-10-15
+
+### Estabilização do Ciclo de Vida da Janela e Tingimento Tonal Global de Superfícies
+- **Mitigação de Crash Pós-Minimização no Linux (Chromium GPU Suspension)**:
+  - Injeção das flags de inicialização do Electron `disable-renderer-backgrounding` e `disable-backgrounding-occluded-windows`, impedindo descarte agressivo de contexto gráfico pelo compositor.
+  - Invocação assíncrona não bloqueante de minimização via `windowController.minimizeWindow(win)`.
+  - Notificação de estado de minimização para o WebContents (`window:minimized-state`) e aplicação do atributo `data-minimized="true"` no DOM raiz, pausando imediatamente transições e animações no CSS (`animation-play-state: paused !important; transition: none !important;`) e blindando o processo contra SIGSEGV.
+- **Saneamento e Destravamento do Pipeline de Fechamento**:
+  - Implementação de encerramento gracioso desacoplado em `windowController.terminateAppGracefully(win)`.
+  - Disparo imediato de interrupção não bloqueante (`SIGTERM`) sobre subprocessos ativos de download (yt-dlp e FFmpeg) registrados no `activeProcessesPool`.
+  - Remoção atômica de listeners concorrentes de IPC e da janela, seguida de destruição imediata da janela (`win.destroy()`) e encerramento da aplicação (`app.quit()`) em menos de 300ms, eliminando qualquer risco de travamento ou deadlock.
+- **Sistema de Tingimento Tonal Global de Superfícies por Cor-Tema**:
+  - Adoção das 5 matrizes cromáticas padrão (**Âmbar**, **Violeta**, **Esmeralda**, **Carmim** e **Ciano**) com seus respectivos subtons de superfície, exportadas em `THEME_PALETTES`.
+  - **Modo Escuro Neutro (Padrão)**: Superfícies tingidas com viés tonal perceptível (8% a 14% de saturação) na matiz ativa (`--win` ~10%, `--surface` ~13%, `--raised` ~18% e `--line` translúcido).
+  - **Modo Escuro AMOLED**: Preservação estrita e rigorosa do preto puro `#000000` em `--win`, `--desk` e `--side`, restringindo o tingimento a bordas (`--line`), elevações sutis (`--raised`), badges e sombras de destaque.
+  - **Modo Claro**: Fundos claros tingidos suavemente na matiz ativa (`--win` ~97%, `--surface` ~93%, `--raised` ~88%, `--text` escuro com viés tonal profundo ~12%).
+  - **Identidade de Marca Dinâmica**: Sincronização das barras de onda verticais da logo `.mark` (`--brand-mark-primary` e `--brand-mark-secondary`) e tipografia `vitrola` na titlebar (`.brand-title` com `--brand-title-color`).
+  - **Harmonização de Componentes**: Bordas de foco de pesquisa (`.linkbar:focus-within`), chips de formato/qualidade ativos e hover, botão de ação "Baixar" e ondas de áudio ativas.
+  - **Reatividade e Ausência de FOUC**: Injeção e leitura antecipada de `data-accent-color` e `data-theme-color` no bootstrap de `<head>` antes do primeiro paint e eliminação de layout shifts.
+
 ## [2.3.2] - 2026-10-15
 
 ### Correção de Falha de Inicialização (Crash on Boot) e Estabilização do Electron

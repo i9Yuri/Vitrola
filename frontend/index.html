@@ -24,6 +24,8 @@
           }
           if (p.accentColor && p.accentColor !== 'default') {
             r.setAttribute('data-accent', p.accentColor);
+            r.setAttribute('data-accent-color', p.accentColor);
+            r.setAttribute('data-theme-color', p.accentColor);
           }
         }
       } catch(e){}
@@ -69,7 +71,7 @@
         <span class="mark" aria-hidden="true">
           <i style="height:8px"></i><i style="height:15px"></i><i style="height:20px"></i><i style="height:12px"></i><i style="height:6px"></i>
         </span>
-        vitrola
+        <span class="brand-title">vitrola</span>
       </div>
       <div class="tb-actions">
         <button id="btn-win-min" class="round" aria-label="Minimizar janela"><svg class="i"><use href="#i-min"/></svg></button>

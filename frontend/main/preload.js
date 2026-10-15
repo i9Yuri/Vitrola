@@ -12,6 +12,13 @@ const electronAPI = {
   maximize: () => ipcRenderer.invoke('window:toggleMaximize'),
   close: () => ipcRenderer.invoke('window:closeApp'),
   startWindowDrag: () => ipcRenderer.invoke('window:action', 'start_drag'),
+  onMinimizedState: (callback) => {
+    if (typeof callback === 'function') {
+      const handler = (_event, isMinimized) => callback(isMinimized);
+      ipcRenderer.on('window:minimized-state', handler);
+      return () => ipcRenderer.removeListener('window:minimized-state', handler);
+    }
+  },
 
   // Storage & Filesystem
   getDefaultDirectory: () => ipcRenderer.invoke('storage:getDefaultDirectory'),

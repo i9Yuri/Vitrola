@@ -52,3 +52,14 @@ body {
 .round {
   -webkit-app-region: no-drag;
 }
+
+/* ==========================================================================
+   Suspensão defensiva de renderização ao minimizar no Linux (X11 / Wayland)
+   Mitiga GPU context loss, watchdog timeout e SIGSEGV
+   ========================================================================== */
+html[data-minimized="true"] *,
+html[data-minimized="true"] *::before,
+html[data-minimized="true"] *::after {
+  animation-play-state: paused !important;
+  transition: none !important;
+}

@@ -70,3 +70,23 @@ export interface DirectorySelectResult {
   selectedPath?: string;
   error?: string;
 }
+
+export interface ThemeSurfaces {
+  desk: string;
+  win: string;
+  surface: string;
+  raised: string;
+}
+
+export interface ThemePaletteDefinition {
+  id: string;
+  name: string;
+  hue: number;
+  accent: string;
+  accentSoft: string;
+  darkSurfaces: ThemeSurfaces;
+  lightSurfaces: ThemeSurfaces;
+  amoledSurfaces: ThemeSurfaces;
+}
+
+export type ThemeMode = 'dark' | 'light' | 'dark-amoled';

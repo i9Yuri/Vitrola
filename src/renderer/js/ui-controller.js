@@ -41,9 +41,22 @@ class UIController {
     this.initThemes();
     this.initYtDlp();
     this.initTitleBar();
+    this.initMinimizedStateListener();
     this.loadConfig();
     this.loadHistory();
     this.setupGlobalPaste();
+  }
+
+  initMinimizedStateListener() {
+    if (window.electronAPI && typeof window.electronAPI.onMinimizedState === "function") {
+      window.electronAPI.onMinimizedState((isMinimized) => {
+        if (isMinimized) {
+          document.documentElement.setAttribute("data-minimized", "true");
+        } else {
+          document.documentElement.removeAttribute("data-minimized");
+        }
+      });
+    }
   }
 
   initTitleBar() {
@@ -911,11 +924,11 @@ class UIController {
   async handleWindowAction(action) {
     try {
       if (action === "minimize") {
-        await minimizeWindow();
+        minimizeWindow().catch(() => {});
       } else if (action === "maximize") {
         await maximizeWindow();
       } else if (action === "close") {
-        await closeWindow();
+        closeWindow().catch(() => {});
       } else if (action === "start_drag") {
         await startWindowDrag();
       }
