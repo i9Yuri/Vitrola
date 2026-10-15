@@ -13,9 +13,19 @@ from .core.ytdlp_wrapper import build_download_command, clean_media_title
 from .core.system import get_download_directory, open_in_file_manager
 
 def get_history_file() -> Path:
-    user_hist = Path(os.path.expanduser("~/.config/mediaforge/history.json"))
+    user_hist = Path(os.path.expanduser("~/.config/mare/history.json"))
     if user_hist.exists():
         return user_hist
+    legacy_user_hist = Path(os.path.expanduser("~/.config/mediaforge/history.json"))
+    if legacy_user_hist.exists():
+        try:
+            user_hist.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(legacy_user_hist, user_hist)
+            print(f"[Downloader] Migrado histórico legado de {legacy_user_hist} para {user_hist}")
+            return user_hist
+        except Exception as e:
+            print(f"[Downloader] Aviso ao migrar histórico legado: {e}")
+            return legacy_user_hist
     local_hist = Path.cwd() / "config" / "history.json"
     if local_hist.parent.exists():
         return local_hist

@@ -1,0 +1,27 @@
+{
+  "name": "mare",
+  "productName": "Maré",
+  "version": "2.2.0",
+  "description": "Baixador de mídia de alta performance (Áudio e Vídeo) integrado ao yt-dlp e ffmpeg",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "bash dev.sh",
+    "test": "python3 -m unittest discover tests",
+    "build": "bash build.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/i9Yuri/MediaForge.git"
+  },
+  "keywords": [
+    "mare",
+    "downloader",
+    "yt-dlp",
+    "ffmpeg",
+    "audio",
+    "video",
+    "media"
+  ],
+  "author": "Yuri",
+  "license": "MIT"
+}

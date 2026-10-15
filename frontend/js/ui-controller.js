@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - CONTROLADOR DE INTERFACE (ui-controller.js)
+ * MARÉ - CONTROLADOR DE INTERFACE (ui-controller.js)
  * Orquestração de eventos, busca com yt-dlp, fila reativa e waveform.
  */
 
@@ -342,11 +342,19 @@ class UIController {
   // --------------------------------------------------------------------------
   async loadConfig() {
     try {
+      // Migração suave de configurações legadas no localStorage se presentes
+      try {
+        const legacyMF = localStorage.getItem("mediaforge_config") || localStorage.getItem("fita_config");
+        if (legacyMF && !localStorage.getItem("mare_config")) {
+          localStorage.setItem("mare_config", legacyMF);
+        }
+      } catch (_) {}
+
       const res = await fetch("/api/config");
       const data = await res.json();
       if (data.success && data.config) {
         this.config = data.config;
-        const dir = data.config.effective_download_dir || data.config.storage?.download_dir || "~/Downloads/MediaForge";
+        const dir = data.config.effective_download_dir || data.config.storage?.download_dir || "~/Música/Maré";
         if (this.destPath) {
           this.destPath.textContent = dir.replace(/\/home\/[^/]+/, "~");
           this.destPath.title = dir;
@@ -376,7 +384,7 @@ class UIController {
   }
 
   openDestModal() {
-    const current = this.destPath?.title || "~/Downloads/MediaForge";
+    const current = this.destPath?.title || "~/Música/Maré";
     if (this.destModalPath) this.destModalPath.textContent = current;
     this.openModal(this.modalDest);
   }

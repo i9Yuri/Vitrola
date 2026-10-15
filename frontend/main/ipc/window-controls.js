@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - CONTROLE DE JANELA NATIVA (window-controls.js)
+ * MARÉ - CONTROLE DE JANELA NATIVA (window-controls.js)
  * Manipulação de minimizar, maximizar/restaurar e fechar via processo nativo/API.
  */
 

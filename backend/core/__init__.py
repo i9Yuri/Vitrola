@@ -1,1 +1,1 @@
-"""Core wrappers and system utilities for MediaForge."""
+"""Core wrappers and system utilities for Maré."""

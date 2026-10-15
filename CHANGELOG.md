@@ -2,6 +2,25 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.2.0] - 2026-10-15
+
+### Rebranding & Consolidação Arquitetural
+- **Rebranding Formal para Maré (`mare`)**:
+  - Consolidação oficial da identidade visual e arquitetural da aplicação sob o nome **Maré** (slug: `mare`), extinguindo todas as referências legadas a "MediaForge" e resíduos de "Fita".
+  - Separação formal e estrita em relação ao tocador multimídia JustPlay.
+  - Sincronização e rastreamento canônico ao repositório [https://github.com/i9Yuri/MediaForge](https://github.com/i9Yuri/MediaForge).
+- **Manifestos e Metadados**:
+  - Criação de `package.json` formalizado com metadados, scripts de build/dev/test e repositório.
+  - Definição do módulo canônico de constantes globais `APP_METADATA` em `src/shared/constants.ts` e `src/shared/constants.js`.
+- **Governança de Configurações e Histórico**:
+  - Migração suave e transparente dos arquivos de configuração (`~/.config/mare/config.json`) e histórico (`~/.config/mare/history.json`), com leitura de fallback dos diretórios legados.
+  - Atualização do diretório padrão sugerido para `~/Música/Maré` (com fallback seguro para `~/Downloads/Maré`).
+  - Migração de estado local (`localStorage`) no frontend para `mare_config`.
+- **Ambiente Desktop e Compilação**:
+  - Atualização dos títulos de janela, classe de janela (`MareFramelessWindow`), nome da aplicação e logs do console.
+  - Lançador nativo desktop `Testar-Mare.desktop` e atalho de aplicação `mare.desktop`.
+  - Atualização do script de compilação PyInstaller (`build.sh`) gerando `dist/Mare` a partir de `Mare.spec`.
+
 ## [2.1.0] - 2026-10-15
 
 ### Corrigido (Fixed)

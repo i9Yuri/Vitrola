@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - COMPONENTE MEDIA SEARCH CARD (MediaSearchCard.js)
+ * MARÉ - COMPONENTE MEDIA SEARCH CARD (MediaSearchCard.js)
  * Input de busca, preview 16:9, alternador de modo (Áudio/Vídeo), chips de formato/qualidade e switches.
  */
 

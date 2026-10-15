@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - GOVERNANÇA DO MOTOR YT-DLP (ytdlp-manager.js)
+ * MARÉ - GOVERNANÇA DO MOTOR YT-DLP (ytdlp-manager.js)
  * Checagem assíncrona, telemetria de integridade e atualização in-place.
  */
 

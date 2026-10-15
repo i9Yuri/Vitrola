@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - ESQUEMA DE TIPOS COMPARTILHADOS (types.ts)
+ * MARÉ - ESQUEMA DE TIPOS COMPARTILHADOS (types.ts)
  */
 
 export interface HistoryItem {

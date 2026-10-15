@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - COMPONENTE DE HISTÓRICO (HistoryModal.js)
+ * MARÉ - COMPONENTE DE HISTÓRICO (HistoryModal.js)
  * Deduplicação de registros, contador cumulativo, sanitização de datas e validação no disco.
  */
 

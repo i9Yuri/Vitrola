@@ -17,7 +17,7 @@ from backend.core.ytdlp_wrapper import (
 )
 
 
-class TestMediaForgeCore(unittest.TestCase):
+class TestMareCore(unittest.TestCase):
     def setUp(self):
         self.test_dir = Path(__file__).resolve().parent / "fixtures"
         self.test_dir.mkdir(parents=True, exist_ok=True)
@@ -240,7 +240,7 @@ class TestMediaForgeCore(unittest.TestCase):
                 "-c:a", "libopus",
                 "-b:a", "128k",
                 "-metadata", "title=Pure Opus Test",
-                "-metadata", "artist=MediaForge Tester",
+                "-metadata", "artist=Maré Tester",
                 str(opus_path),
             ],
             check=True,
@@ -269,14 +269,14 @@ class TestMediaForgeCore(unittest.TestCase):
         format_tags = probe_data.get("format", {}).get("tags", {}) or {}
         combined_tags = {**format_tags, **stream_tags}
         self.assertEqual(combined_tags.get("title"), "Pure Opus Test")
-        self.assertEqual(combined_tags.get("artist"), "MediaForge Tester")
+        self.assertEqual(combined_tags.get("artist"), "Maré Tester")
 
     def test_ffprobe_mp4_video_with_subtitles(self):
         """Generate test MP4 container with video, audio and subtitle stream and verify with ffprobe."""
         mp4_path = self.test_dir / "test_video_1080p.mp4"
         srt_path = self.test_dir / "test_sub.srt"
         srt_path.write_text(
-            "1\n00:00:00,000 --> 00:00:01,000\nLegenda de Teste MediaForge\n",
+            "1\n00:00:00,000 --> 00:00:01,000\nLegenda de Teste Maré\n",
             encoding="utf-8",
         )
 

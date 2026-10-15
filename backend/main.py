@@ -28,7 +28,7 @@ from backend.downloader import manager
 FRONTEND_DIR = get_resource_path("frontend")
 
 
-class MediaForgeHandler(BaseHTTPRequestHandler):
+class MareHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def log_message(self, format, *args):
@@ -268,7 +268,7 @@ def run_server(headless: bool = False):
 
     download_dir = get_download_directory()
     print("=" * 65)
-    print("   🚀 MediaForge - High-Performance Audio/Video Downloader")
+    print("   🌊 Maré - Baixador de Áudio e Vídeo de Alta Performance")
     print("=" * 65)
     print(f" • Host Local:       {server_url}")
     print(f" • Pasta de destino: {download_dir}")
@@ -277,7 +277,7 @@ def run_server(headless: bool = False):
     print("=" * 65)
 
     ThreadingHTTPServer.allow_reuse_address = True
-    server = ThreadingHTTPServer((host, port), MediaForgeHandler)
+    server = ThreadingHTTPServer((host, port), MareHandler)
 
     # Iniciar verificação assíncrona não bloqueante do yt-dlp
     updater.start_background_worker(delay_seconds=6)
@@ -287,7 +287,7 @@ def run_server(headless: bool = False):
         try:
             server.serve_forever()
         except KeyboardInterrupt:
-            print("\n[MediaForge] Encerrando servidor com segurança...")
+            print("\n[Maré] Encerrando servidor com segurança...")
             server.server_close()
     else:
         # Run HTTP server in background thread and open native desktop window

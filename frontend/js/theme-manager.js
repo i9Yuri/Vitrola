@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - MOTOR DE TEMAS (theme-manager.js)
+ * MARÉ - MOTOR DE TEMAS (theme-manager.js)
  * Gerencia Modos de Superfície (Claro, Slate, AMOLED) e Acentos Dinâmicos.
  */
 

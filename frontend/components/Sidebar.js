@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - COMPONENTE SIDEBAR (Sidebar.js)
+ * MARÉ - COMPONENTE SIDEBAR (Sidebar.js)
  * Navegação simplificada (Baixar, Histórico, Ajustes) e acoplamento do modal de destino.
  */
 

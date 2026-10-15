@@ -1,5 +1,5 @@
 """
-MediaForge - Native Frameless Desktop Window Runner
+Maré - Native Frameless Desktop Window Runner
 Supports PySide6 (QtWebEngine) and pywebview seamlessly.
 Configured for frameless window mode with integrated controls.
 """
@@ -8,7 +8,7 @@ import sys
 import time
 from typing import Optional, Dict, Any
 
-WINDOW_TITLE = "MediaForge"
+WINDOW_TITLE = "Maré"
 WINDOW_WIDTH = 1200
 WINDOW_HEIGHT = 760
 MIN_WIDTH = 840
@@ -62,7 +62,7 @@ def dispatch_window_action(action: str) -> Dict[str, Any]:
 
 def launch_desktop_window(server_url: str):
     """
-    Launch the native desktop window pointing to the local MediaForge HTTP server.
+    Launch the native desktop window pointing to the local Maré HTTP server.
     Uses frameless mode without OS titlebars.
     """
     global _active_window
@@ -70,7 +70,7 @@ def launch_desktop_window(server_url: str):
     # 1. Try pywebview if installed
     try:
         import webview
-        print(f"[Desktop] Inicializando janela frameless via pywebview ({WINDOW_WIDTH}x{WINDOW_HEIGHT})...")
+        print(f"[Desktop] Inicializando janela frameless do Maré via pywebview ({WINDOW_WIDTH}x{WINDOW_HEIGHT})...")
         _active_window = webview.create_window(
             title=WINDOW_TITLE,
             url=server_url,
@@ -96,10 +96,12 @@ def launch_desktop_window(server_url: str):
         from PySide6.QtWidgets import QApplication, QMainWindow
         from PySide6.QtWebEngineWidgets import QWebEngineView
 
-        print(f"[Desktop] Inicializando janela nativa frameless via PySide6 ({WINDOW_WIDTH}x{WINDOW_HEIGHT})...")
+        print(f"[Desktop] Inicializando janela nativa frameless do Maré via PySide6 ({WINDOW_WIDTH}x{WINDOW_HEIGHT})...")
 
         app = QApplication.instance() or QApplication(sys.argv)
         app.setApplicationName(WINDOW_TITLE)
+        if hasattr(app, "setDesktopFileName"):
+            app.setDesktopFileName("mare.desktop")
 
         palette = QPalette()
         palette.setColor(QPalette.Window, QColor("#181A21"))
@@ -108,7 +110,7 @@ def launch_desktop_window(server_url: str):
         palette.setColor(QPalette.Text, QColor("#EFF0F5"))
         app.setPalette(palette)
 
-        class MediaForgeFramelessWindow(QMainWindow):
+        class MareFramelessWindow(QMainWindow):
             def __init__(self, url: str):
                 super().__init__()
                 self.setWindowTitle(WINDOW_TITLE)
@@ -149,7 +151,7 @@ def launch_desktop_window(server_url: str):
                 self._drag_pos = None
                 super().mouseReleaseEvent(event)
 
-        _active_window = MediaForgeFramelessWindow(server_url)
+        _active_window = MareFramelessWindow(server_url)
         _active_window.show()
 
         sys.exit(app.exec())

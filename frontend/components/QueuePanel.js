@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - COMPONENTE QUEUE PANEL (QueuePanel.js)
+ * MARÉ - COMPONENTE QUEUE PANEL (QueuePanel.js)
  * Painel de fila de downloads com barras determinísticas de forma de onda.
  */
 

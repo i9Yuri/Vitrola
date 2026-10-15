@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - CONTRATOS DE TIPAGEM E COMUNICAÇÃO IPC / HTTP
+ * MARÉ - CONTRATOS DE TIPAGEM E COMUNICAÇÃO IPC / HTTP
  */
 
 export interface MediaMetadata {

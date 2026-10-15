@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - MANIPULADOR DE SISTEMA DE ARQUIVOS (filesystem-handler.js)
+ * MARÉ - MANIPULADOR DE SISTEMA DE ARQUIVOS (filesystem-handler.js)
  * Verificação de existência, revelação no gerenciador e diálogo de seleção.
  */
 

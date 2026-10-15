@@ -1,5 +1,5 @@
 /**
- * FITA / MEDIAFORGE - COMPONENTE TITLEBAR (TitleBar.js)
+ * MARÉ - COMPONENTE TITLEBAR (TitleBar.js)
  * Controles de janela desacoplados, branding e ações de menu.
  */
 

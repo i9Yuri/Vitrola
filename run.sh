@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MediaForge - Launcher Script for Nobara Linux / POSIX
+# Maré - Launcher Script for Nobara Linux / POSIX
 # ==============================================================================
 
 set -e
@@ -9,7 +9,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 
 echo "================================================================="
-echo "   🚀 MediaForge - High-Performance Media Downloader"
+echo "   🌊 Maré - Baixador de Áudio e Vídeo de Alta Performance"
 echo "================================================================="
 
 # Check requirements
@@ -21,7 +21,6 @@ for bin in python3 yt-dlp ffmpeg ffprobe; do
 done
 
 echo "✔ Ambiente Nobara Linux verificado (python3, yt-dlp, ffmpeg, ffprobe ok)."
-echo "✔ Inicializando MediaForge Desktop (janela nativa)..."
+echo "✔ Inicializando Maré Desktop (janela nativa)..."
 
 exec python3 "$DIR/backend/main.py" "$@"
-

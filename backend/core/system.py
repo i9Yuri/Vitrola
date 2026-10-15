@@ -17,9 +17,20 @@ def get_resource_path(relative_path: str) -> Path:
 
 def get_config_path() -> Path:
     """Get the active configuration file path honoring XDG standard."""
-    user_config = Path(os.path.expanduser("~/.config/mediaforge/config.json"))
+    user_config = Path(os.path.expanduser("~/.config/mare/config.json"))
     if user_config.exists():
         return user_config
+    legacy_user_config = Path(os.path.expanduser("~/.config/mediaforge/config.json"))
+    if legacy_user_config.exists():
+        try:
+            user_config.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(legacy_user_config, user_config)
+            print(f"[System] Migrada configuração legada de {legacy_user_config} para {user_config}")
+            return user_config
+        except Exception as e:
+            print(f"[System] Aviso ao migrar configuração legada: {e}")
+            return legacy_user_config
+
     local_cfg = Path.cwd() / "config" / "config.json"
     if local_cfg.exists():
         return local_cfg
@@ -34,7 +45,7 @@ def load_config() -> Dict[str, Any]:
     default_cfg = {
         "server": {"host": "127.0.0.1", "port": 8765},
         "storage": {
-            "download_dir": "~/Downloads/MediaForge",
+            "download_dir": "~/Música/Maré",
             "fallback_dir": "downloads",
         },
         "defaults": {
@@ -67,8 +78,8 @@ def load_config() -> Dict[str, Any]:
 
 
 def save_config(new_config: Dict[str, Any]) -> bool:
-    """Save updated configuration to ~/.config/mediaforge/config.json."""
-    target = Path(os.path.expanduser("~/.config/mediaforge/config.json"))
+    """Save updated configuration to ~/.config/mare/config.json."""
+    target = Path(os.path.expanduser("~/.config/mare/config.json"))
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         with open(target, "w", encoding="utf-8") as f:
@@ -82,7 +93,7 @@ def save_config(new_config: Dict[str, Any]) -> bool:
 def get_download_directory() -> Path:
     """Resolve and create the effective download directory."""
     cfg = load_config()
-    raw_path = cfg.get("storage", {}).get("download_dir", "~/Downloads/MediaForge")
+    raw_path = cfg.get("storage", {}).get("download_dir", "~/Música/Maré")
     expanded = Path(os.path.expanduser(raw_path)).resolve()
 
     try:
@@ -93,10 +104,14 @@ def get_download_directory() -> Path:
         test_file.unlink()
         return expanded
     except Exception as e:
-        print(f"[System] Cannot write to {expanded} ({e}), falling back to local downloads/")
-        fallback = (Path.cwd() / "downloads").resolve()
-        fallback.mkdir(parents=True, exist_ok=True)
-        return fallback
+        fallback = Path(os.path.expanduser("~/Downloads/Maré")).resolve()
+        try:
+            fallback.mkdir(parents=True, exist_ok=True)
+            return fallback
+        except Exception:
+            fallback_local = (Path.cwd() / "downloads").resolve()
+            fallback_local.mkdir(parents=True, exist_ok=True)
+            return fallback_local
 
 
 def sanitize_filename(name: str) -> str:
