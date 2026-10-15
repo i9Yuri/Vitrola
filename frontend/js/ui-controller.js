@@ -382,17 +382,30 @@ class UIController {
   async pasteFromClipboard() {
     try {
       let text = "";
-      if (window.electronAPI && typeof window.electronAPI.readClipboard === "function") {
-        text = await window.electronAPI.readClipboard();
-      } else {
+      if (window.electronAPI) {
+        if (typeof window.electronAPI.readClipboardText === "function") {
+          text = await window.electronAPI.readClipboardText();
+        } else if (window.electronAPI.clipboard && typeof window.electronAPI.clipboard.readText === "function") {
+          text = await window.electronAPI.clipboard.readText();
+        } else if (typeof window.electronAPI.readClipboard === "function") {
+          text = await window.electronAPI.readClipboard();
+        } else if (typeof window.electronAPI.clipboardReadText === "function") {
+          text = await window.electronAPI.clipboardReadText();
+        }
+      }
+
+      if (!text) {
         try {
           const res = await fetch("/api/clipboard");
           const data = await res.json();
           if (data && data.text) text = data.text;
         } catch (_) {}
-        if (!text && navigator.clipboard && navigator.clipboard.readText) {
+      }
+
+      if (!text && navigator.clipboard && navigator.clipboard.readText) {
+        try {
           text = await navigator.clipboard.readText();
-        }
+        } catch (_) {}
       }
 
       text = (text || "").trim();
@@ -402,6 +415,7 @@ class UIController {
       }
 
       this.inputUrl.value = text;
+      this.inputUrl.dispatchEvent(new Event("input", { bubbles: true }));
       this.inputUrl.focus();
 
       const isUrl = /^https?:\/\//i.test(text);
@@ -455,22 +469,22 @@ class UIController {
   populateCard(data) {
     const meta = data.metadata;
     this.cardTitle.textContent = meta.title || "Mídia sem título";
-    this.cardBy.textContent = meta.uploader || "Canal / Artista";
+    this.cardBy.textContent = meta.uploader || meta.artist || meta.channel || "";
 
-    const durationStr = meta.duration_formatted || meta.duration_str || "--:--";
+    const durationStr = meta.duration_formatted || meta.duration_str || "";
     this.cardDur.textContent = durationStr;
 
-    const views = meta.view_count ? Number(meta.view_count).toLocaleString("pt-BR") : "0";
+    const views = meta.view_count ? Number(meta.view_count).toLocaleString("pt-BR") : "";
     if (this.cardStats) {
-      this.cardStats.textContent = `${views} visualizações`;
+      this.cardStats.textContent = views ? `${views} visualizações` : "";
     }
     if (this.cardPlatform) {
-      this.cardPlatform.textContent = meta.extractor || "Web";
+      this.cardPlatform.textContent = meta.extractor || "";
     }
 
     // Thumbnail no mockup de vinil (.sleeve)
     if (meta.thumbnail && this.cardThumb) {
-      this.cardThumb.innerHTML = `<img src="${meta.thumbnail}" alt="Thumbnail" loading="lazy"><em id="card-dur">${durationStr}</em>`;
+      this.cardThumb.innerHTML = `<img src="${meta.thumbnail}" alt="Thumbnail" loading="lazy">${durationStr ? `<em id="card-dur">${durationStr}</em>` : ""}`;
     }
 
     if (meta.is_music_track && !meta.has_real_video) {

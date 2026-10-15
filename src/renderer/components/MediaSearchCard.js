@@ -38,6 +38,36 @@ export class MediaSearchCard {
     this.groupVideoRes = cardElement.querySelector("#group-video-res");
   }
 
+  applyState(state, data = null) {
+    const s = String(state).toUpperCase();
+    if (s === "HIDDEN" || s === "IDLE" || s === "EXTRACTION_ERROR" || s === "ERROR") {
+      this.setState("idle");
+    } else if (s === "SKELETON_LOADING" || s === "FETCHING-SKELETON" || s === "FETCHING_SKELETON" || s === "LOADING") {
+      this.setState("fetching-skeleton");
+    } else if (s === "METADATA_LOADED" || s === "METADATA-READY" || s === "METADATA_READY" || s === "READY") {
+      this.setState("metadata-ready");
+      if (data && typeof data === "object") {
+        this.renderData(data);
+      }
+    }
+  }
+
+  renderData(data) {
+    const meta = data.metadata || data;
+    if (!meta) return;
+    if (this.titleEl) this.titleEl.textContent = meta.title || "";
+    if (this.byEl) this.byEl.textContent = meta.uploader || meta.artist || meta.channel || "";
+    if (this.platformEl) this.platformEl.textContent = meta.extractor || "";
+    if (this.durEl) this.durEl.textContent = meta.duration_formatted || meta.duration_str || "";
+    if (this.statsEl && meta.view_count) {
+      this.statsEl.textContent = `${Number(meta.view_count).toLocaleString("pt-BR")} visualizações`;
+    }
+    if (meta.thumbnail && this.thumbEl) {
+      const dur = meta.duration_formatted || meta.duration_str || "";
+      this.thumbEl.innerHTML = `<img src="${meta.thumbnail}" alt="Thumbnail" loading="lazy">${dur ? `<em id="card-dur">${dur}</em>` : ""}`;
+    }
+  }
+
   setState(state) {
     this.state = state;
     if (!this.card) return;

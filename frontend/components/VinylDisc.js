@@ -14,6 +14,12 @@ export class VinylDisc {
     this.centerX = 0;
     this.centerY = 0;
     this.activePointerId = null;
+    this.state = "SPINNING_AUTO"; // SPINNING_AUTO | DRAGGING_MANUAL
+
+    this._onPointerDown = (e) => this.startDrag(e);
+    this._onPointerMove = (e) => this.processDrag(e);
+    this._onPointerUp = (e) => this.endDrag(e);
+    this._onPointerCancel = (e) => this.endDrag(e);
   }
 
   mount(container = document.querySelector(".disc")) {
@@ -24,13 +30,25 @@ export class VinylDisc {
     this.bindEvents();
   }
 
+  attach(container) {
+    this.mount(container);
+  }
+
+  detach() {
+    if (!this.vinyl) return;
+    this.vinyl.removeEventListener("pointerdown", this._onPointerDown);
+    this.vinyl.removeEventListener("pointermove", this._onPointerMove);
+    this.vinyl.removeEventListener("pointerup", this._onPointerUp);
+    this.vinyl.removeEventListener("pointercancel", this._onPointerCancel);
+  }
+
   bindEvents() {
     if (!this.vinyl) return;
 
-    this.vinyl.addEventListener("pointerdown", (e) => this.startDrag(e));
-    this.vinyl.addEventListener("pointermove", (e) => this.processDrag(e));
-    this.vinyl.addEventListener("pointerup", (e) => this.endDrag(e));
-    this.vinyl.addEventListener("pointercancel", (e) => this.endDrag(e));
+    this.vinyl.addEventListener("pointerdown", this._onPointerDown);
+    this.vinyl.addEventListener("pointermove", this._onPointerMove);
+    this.vinyl.addEventListener("pointerup", this._onPointerUp);
+    this.vinyl.addEventListener("pointercancel", this._onPointerCancel);
   }
 
   startDrag(e) {
@@ -45,6 +63,7 @@ export class VinylDisc {
     this.lastPointerAngle = this.calculateAngle(e.clientX, e.clientY);
 
     this.isDragging = true;
+    this.state = "DRAGGING_MANUAL";
     this.activePointerId = e.pointerId;
 
     this.vinyl.classList.add("dragging");
@@ -74,6 +93,7 @@ export class VinylDisc {
   endDrag(e) {
     if (!this.isDragging) return;
     this.isDragging = false;
+    this.state = "SPINNING_AUTO";
 
     if (this.activePointerId !== null) {
       try {
@@ -82,10 +102,11 @@ export class VinylDisc {
       this.activePointerId = null;
     }
 
-    // Retoma suavemente o estado de rotação automática
-    this.vinyl.classList.remove("dragging");
-    // Define o ponto inicial da animação CSS no ângulo em que foi solto
+    // Retoma suavemente o estado de rotação automática sem saltos de ângulo
+    this.vinyl.style.setProperty("--current-angle", `${this.currentAngle}deg`);
     this.vinyl.style.setProperty("--start-deg", `${this.currentAngle}deg`);
+    this.vinyl.style.transform = "";
+    this.vinyl.classList.remove("dragging");
   }
 
   calculateAngle(x, y) {
@@ -108,3 +129,6 @@ export class VinylDisc {
     }
   }
 }
+
+export const VinylTracker = VinylDisc;
+

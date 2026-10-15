@@ -2,6 +2,22 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.5.2] - 2026-10-15
+
+### Saneamento de Identidade no Header, Vinil Polar Contínuo e Skeleton Shimmer Aprimorado
+- **Erradicação da Duplicação de Marca no Cabeçalho**:
+  - Remoção completa de `.brand` / `.mark` e do título "Vitrola" da barra de título superior (`.top`), convertendo a faixa em área pura de arraste e controles de janela alinhados à direita.
+  - Centralização exclusiva da identidade visual na barra lateral (`.side .logo`).
+- **Ativação da Leitura de Área de Transferência (Clipboard IPC)**:
+  - Registro de canais duplos (`clipboard:read-text` e `clipboard:readText`) em `main.js` e métodos no preload (`readClipboardText`, `clipboard.readText`).
+  - Disparo programático de evento nativo `input` (`new Event('input', { bubbles: true })`) no campo de busca e disparo imediato de inspeção para URLs válidas (`http://` ou `https://`).
+- **Física Polar e Retomada Contínua do Vinil Interativo (`VinylDisc.js`)**:
+  - Implementação do contrato `VinylTracker` com rastreamento polar `Math.atan2(dy, dx) * (180 / Math.PI)` e retenção de ponteiro com `setPointerCapture`.
+  - Retomada contínua de rotação automática a partir do ângulo exato de liberação via CSS custom property `--current-angle`, eliminando qualquer salto angular (angle jump).
+- **Skeleton Screen Neutro e Saneamento da Capa (`.sleeve`)**:
+  - Remoção definitiva do gradiente decorativo sunset (laranja/rosa) da `.sleeve`, aplicando base neutra sólida `var(--s2)`.
+  - Gradiente de varredura luminoso contínuo com `@keyframes shimmer` (1.5s ease-in-out) em três barras proporcionais sem texto legível ou mockups fictícios.
+
 ## [2.5.1] - 2026-10-15
 
 ### Vinil Interativo, Leitura de Clipboard por IPC, Modo Original e Skeleton Shimmer

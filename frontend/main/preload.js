@@ -31,8 +31,12 @@ const electronAPI = {
   revealDownloadPath: (dirPath) => ipcRenderer.invoke('settings:revealDownloadPath', dirPath),
 
   // Clipboard
-  readClipboard: () => ipcRenderer.invoke('clipboard:readText'),
-  clipboardReadText: () => ipcRenderer.invoke('clipboard:readText'),
+  readClipboard: () => ipcRenderer.invoke('clipboard:read-text'),
+  readClipboardText: () => ipcRenderer.invoke('clipboard:read-text'),
+  clipboardReadText: () => ipcRenderer.invoke('clipboard:read-text'),
+  clipboard: {
+    readText: () => ipcRenderer.invoke('clipboard:read-text')
+  },
 
   // System & App Metadata
   getAppMetadata: () => ipcRenderer.invoke('system:getAppMetadata'),

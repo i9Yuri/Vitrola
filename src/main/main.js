@@ -268,8 +268,11 @@ function registerIpcHandlers() {
     }
   });
 
-  // clipboard:readText
+  // clipboard:readText & clipboard:read-text
   ipcMain.handle('clipboard:readText', async () => {
+    return await readClipboardText();
+  });
+  ipcMain.handle('clipboard:read-text', async () => {
     return await readClipboardText();
   });
 
