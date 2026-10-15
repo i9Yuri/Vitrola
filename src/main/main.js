@@ -269,7 +269,7 @@ function createSecureMainWindow(options = {}) {
   });
 
   if (win.setDesktopFileName) {
-    win.setDesktopFileName('vitrola.desktop');
+    win.setDesktopFileName('vitrola');
   }
 
   // 1. Sequenciamento de Exibição da Janela

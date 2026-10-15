@@ -11,12 +11,14 @@ cd "$DIR"
 
 # Feedback visual imediato na área de trabalho do Linux
 if command -v notify-send &>/dev/null; then
-    notify-send -i applications-multimedia "Vitrola" "Iniciando testes e abrindo interface..."
+    notify-send -i applications-multimedia "Vitrola" "Abrindo Vitrola..."
 fi
 
-# Executa a suíte de testes unitários
-echo "🧪 Executando suíte de testes do Vitrola..."
-python3 -m unittest discover tests
+# Se invocado com flag de teste, executa a suíte antes
+if [[ "$1" == "--test" || "$1" == "-t" ]]; then
+    echo "🧪 Executando suíte de testes do Vitrola..."
+    python3 -m unittest discover tests
+fi
 
 # Inicia a janela nativa desktop (PySide6 QtWebEngine)
 echo "🎶 Abrindo interface gráfica do Vitrola..."

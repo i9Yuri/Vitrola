@@ -107,7 +107,7 @@ def launch_desktop_window(server_url: str):
         app = QApplication.instance() or QApplication(sys.argv)
         app.setApplicationName(WINDOW_TITLE)
         if hasattr(app, "setDesktopFileName"):
-            app.setDesktopFileName("vitrola.desktop")
+            app.setDesktopFileName("vitrola")
 
         palette = QPalette()
         palette.setColor(QPalette.Window, QColor("#181A21"))
@@ -115,34 +115,6 @@ def launch_desktop_window(server_url: str):
         palette.setColor(QPalette.Base, QColor("#121319"))
         palette.setColor(QPalette.Text, QColor("#EFF0F5"))
         app.setPalette(palette)
-
-        class TitlebarDragFilter(QObject):
-            def __init__(self, window):
-                super().__init__()
-                self.window = window
-                self._dragging = False
-                self._drag_start = None
-
-            def eventFilter(self, watched, event):
-                if event.type() == QEvent.MouseButtonPress:
-                    if event.button() == Qt.LeftButton:
-                        global_pt = event.globalPosition().toPoint()
-                        pos = self.window.mapFromGlobal(global_pt)
-                        # Titlebar area: top 46px, outside window controls (right 130px)
-                        if 0 <= pos.y() <= 46 and pos.x() < self.window.width() - 130:
-                            win_handle = self.window.windowHandle()
-                            if win_handle and hasattr(win_handle, "startSystemMove"):
-                                if win_handle.startSystemMove():
-                                    return True
-                            self._dragging = True
-                            self._drag_start = global_pt - self.window.frameGeometry().topLeft()
-                elif event.type() == QEvent.MouseMove:
-                    if self._dragging and (event.buttons() & Qt.LeftButton):
-                        self.window.move(event.globalPosition().toPoint() - self._drag_start)
-                        return True
-                elif event.type() == QEvent.MouseButtonRelease:
-                    self._dragging = False
-                return super().eventFilter(watched, event)
 
         class VitrolaFramelessWindow(QMainWindow):
             def __init__(self, url: str):
@@ -160,9 +132,6 @@ def launch_desktop_window(server_url: str):
                 self.browser.setStyleSheet("background-color: #181A21;")
                 self.browser.setUrl(QUrl(url))
                 self.setCentralWidget(self.browser)
-
-                self._drag_filter = TitlebarDragFilter(self)
-                app.installEventFilter(self._drag_filter)
 
         _active_window = VitrolaFramelessWindow(server_url)
         _active_window.show()
