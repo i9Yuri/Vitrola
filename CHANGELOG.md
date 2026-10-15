@@ -2,6 +2,26 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.1.0] - 2026-10-15
+
+### Corrigido (Fixed)
+- **Eliminação da Janela Aninhada (Frameless Edge-to-Edge)**:
+  - Remoção de margens e padding de 16px do `body` e conversão da janela interna `.window` para preenchimento total `100vw` e `100vh`.
+  - Configuração de `Qt.FramelessWindowHint` no runner nativo desktop com suporte a arraste e redimensionamento nativos.
+  - Vinculação dos botões de controle de janela (minimizar, maximizar/restaurar e fechar) a handlers nativos via `/api/window/action` e IPC.
+- **Reestruturação da Sidebar**:
+  - Exclusão do botão "Fila" redundante da barra lateral de navegação (o status da fila permanece no painel lateral direito fixo).
+  - Transição e renomeação de "Biblioteca" para "Histórico".
+- **Modal Contextual de Destino ("Salvando em")**:
+  - Implementação de pop-up contextual flutuante (`#modal-dest`) ao clicar em "Salvando em", com ações dedicadas para "Abrir Pasta Atual" e "Alterar Pasta de Destino" via diálogo nativo do SO (`zenity` / `kdialog`).
+- **Blindagem e Deduplicação do Histórico**:
+  - Algoritmo de unicidade por chave de mídia (`mediaKey`) com contador cumulativo e badge multiplicador estilizado (ex.: `2x`).
+  - Formatação defensiva de timestamps em pt-BR eliminando qualquer ocorrência de `Invalid Date`.
+  - Verificação prévia de existência de arquivo no disco (`/api/check-file` / `fs.existsSync`) antes de acionar a revelação no gerenciador, com emissão de toast informativo caso o arquivo tenha sido movido ou excluído.
+- **Saneamento da Paleta Violeta e Zero Layout Shift**:
+  - Correção dos tokens de acento para a cor Violeta (`html[data-accent="violet"]` agora propaga devidamente `--accent: var(--accent-violet)` e preenche todas as superfícies dependentes).
+  - Estabilização dimensional de botões com grid estático e preservação constante de `font-weight: 550` e bordas fixas, eliminando qualquer deslocamento de layout (layout shift) ao alternar temas ou cores.
+
 ## [2.0.0] - 2026-10-14
 
 ### Adicionado (Added)

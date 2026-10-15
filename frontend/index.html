@@ -38,6 +38,7 @@
   <!-- Estilos Desacoplados -->
   <link rel="stylesheet" href="/styles/theme.css">
   <link rel="stylesheet" href="/styles/main.css">
+  <link rel="stylesheet" href="/styles/window.css">
 </head>
 <body>
 
@@ -59,7 +60,7 @@
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></symbol>
   </svg>
 
-  <!-- Janela Principal -->
+  <!-- Janela Principal Frameless -->
   <div class="window" role="application" aria-label="Fita, baixador de música e vídeo">
 
     <!-- Titlebar Customizada Integrada -->
@@ -89,14 +90,9 @@
             <svg class="i"><use href="#i-download"/></svg>
             <span class="lbl">Baixar</span>
           </button>
-          <button data-view="queue">
+          <button data-view="history">
             <svg class="i"><use href="#i-list"/></svg>
-            <span class="lbl">Fila</span>
-            <span class="count hidden" id="nav-queue-count">0</span>
-          </button>
-          <button data-view="library">
-            <svg class="i"><use href="#i-folder"/></svg>
-            <span class="lbl">Biblioteca</span>
+            <span class="lbl">Histórico</span>
           </button>
           <button data-view="settings">
             <svg class="i"><use href="#i-sliders"/></svg>
@@ -327,12 +323,37 @@
       </div>
     </div>
 
-    <!-- Modal de Biblioteca (Histórico) -->
+    <!-- Modal de Destino ("Salvando em") -->
+    <div id="modal-dest" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="dest-modal-title">
+      <div class="modal-sheet" style="max-width: 440px">
+        <header class="modal-header">
+          <h3 id="dest-modal-title">Pasta de Destino</h3>
+          <button class="x btn-close-modal" aria-label="Fechar pasta de destino"><svg class="i"><use href="#i-x"/></svg></button>
+        </header>
+        <div class="modal-content" style="gap: 16px">
+          <div class="setting-group">
+            <label>Diretório Atual</label>
+            <div id="dest-modal-path" style="padding: 10px 14px; background: var(--surface); border-radius: 12px; border: 1px solid var(--line); font-size: 13px; font-weight: 550; word-break: break-all; color: var(--text)">~/Downloads/MediaForge</div>
+          </div>
+          <div style="display: grid; gap: 10px">
+            <button id="btn-dest-open-folder" class="btn-primary" style="justify-content: center; height: 42px">
+              <svg class="i" style="width: 16px; height: 16px"><use href="#i-folder"/></svg>
+              Abrir Pasta Atual
+            </button>
+            <button id="btn-dest-change-folder" class="btn-secondary" style="justify-content: center; height: 42px">
+              Alterar Pasta de Destino
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Histórico -->
     <div id="modal-library" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="library-title">
       <div class="modal-sheet">
         <header class="modal-header">
-          <h3 id="library-title">Biblioteca de Downloads</h3>
-          <button class="x btn-close-modal" aria-label="Fechar biblioteca"><svg class="i"><use href="#i-x"/></svg></button>
+          <h3 id="library-title">Histórico de Downloads</h3>
+          <button class="x btn-close-modal" aria-label="Fechar histórico"><svg class="i"><use href="#i-x"/></svg></button>
         </header>
         <div class="modal-content">
           <div id="library-list" style="display:grid;gap:8px">

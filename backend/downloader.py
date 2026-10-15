@@ -7,6 +7,7 @@ import queue
 import threading
 import subprocess
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from .core.ytdlp_wrapper import build_download_command, clean_media_title
 from .core.system import get_download_directory, open_in_file_manager
@@ -97,7 +98,27 @@ class DownloadManager:
         if HISTORY_FILE.exists():
             try:
                 with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    raw_list = json.load(f)
+                    cleaned = []
+                    for item in raw_list:
+                        if not isinstance(item, dict):
+                            continue
+                        # Garantir completed_at em formato ISO válido
+                        completed_at = item.get("completed_at")
+                        if not completed_at:
+                            ts = item.get("timestamp")
+                            if isinstance(ts, (int, float)):
+                                try:
+                                    completed_at = datetime.fromtimestamp(ts, timezone.utc).isoformat()
+                                except Exception:
+                                    completed_at = datetime.now(timezone.utc).isoformat()
+                            else:
+                                completed_at = datetime.now(timezone.utc).isoformat()
+                        item["completed_at"] = completed_at
+                        item["download_count"] = max(1, int(item.get("download_count", 1)))
+                        item["media_key"] = item.get("media_key") or f"{item.get('title', '')}_{item.get('mode', '')}"
+                        cleaned.append(item)
+                    return cleaned
             except Exception as e:
                 print(f"[History] Failed to load history: {e}")
         return []
@@ -274,19 +295,47 @@ class DownloadManager:
                         task.filepath = str(recent_files[0])
                         task.filename = recent_files[0].name
 
-                # Add to history
-                entry = {
-                    "task_id": task.task_id,
-                    "title": task.title,
-                    "mode": task.mode,
-                    "filename": task.filename,
-                    "filepath": task.filepath,
-                    "timestamp": time.time(),
-                    "size": task.total_size,
-                    "success": True,
-                }
+                # Add to history with deduplication and grouping
+                media_key = f"{task.url.strip()}_{task.mode}"
+                now_iso = datetime.now(timezone.utc).isoformat()
+
                 with self._lock:
-                    self.history.insert(0, entry)
+                    existing = None
+                    for h in self.history:
+                        if h.get("media_key") == media_key or (
+                            h.get("title") == task.title and h.get("mode") == task.mode
+                        ):
+                            existing = h
+                            break
+
+                    if existing:
+                        existing["download_count"] = existing.get("download_count", 1) + 1
+                        existing["completed_at"] = now_iso
+                        existing["filepath"] = task.filepath
+                        existing["filename"] = task.filename
+                        existing["size"] = task.total_size
+                        existing["total_size"] = task.total_size
+                        self.history.remove(existing)
+                        self.history.insert(0, existing)
+                    else:
+                        entry = {
+                            "id": task.task_id,
+                            "task_id": task.task_id,
+                            "media_key": media_key,
+                            "title": task.title,
+                            "mode": task.mode,
+                            "filename": task.filename,
+                            "filepath": task.filepath,
+                            "format": task.options.get("format", ""),
+                            "completed_at": now_iso,
+                            "timestamp": time.time(),
+                            "size": task.total_size,
+                            "total_size": task.total_size,
+                            "download_count": 1,
+                            "success": True,
+                        }
+                        self.history.insert(0, entry)
+
                     self._save_history()
 
             else:

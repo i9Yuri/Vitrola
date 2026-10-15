@@ -10,20 +10,21 @@
 }
 
 html, body {
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--win);
 }
 
 body {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: var(--desk);
+  display: flex;
+  flex-direction: column;
   color: var(--text);
   font: 400 14px/1.45 var(--font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
   user-select: none;
 }
 
@@ -56,21 +57,23 @@ svg.i {
 }
 
 /* ==========================================================================
-   1. JANELA PRINCIPAL (Window Frame)
+   1. JANELA PRINCIPAL (Window Frame) - MODO FRAMELESS NATIVO
    ========================================================================== */
 .window {
-  width: min(1240px, 100%);
-  height: min(780px, calc(100dvh - 32px));
-  min-height: 640px;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
   background: var(--win);
-  border-radius: 16px;
-  box-shadow: var(--shadow-win);
-  border: 1px solid var(--line);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  transition: background-color 0.2s ease;
 }
 
 /* Titlebar */
@@ -1063,24 +1066,27 @@ kbd {
 }
 
 .theme-options, .accent-options {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
 }
 
 .theme-btn, .accent-btn {
-  height: 38px;
-  padding: 0 16px;
+  height: 40px;
+  padding: 0 14px;
   border-radius: 12px;
   background: var(--surface);
   border: 1px solid var(--line);
   color: var(--text);
-  font-weight: 500;
+  font-weight: 550;
   font-size: 13px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  transition: all 0.15s ease;
+  box-sizing: border-box;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .theme-btn:hover, .accent-btn:hover {
@@ -1092,7 +1098,7 @@ kbd {
   background: var(--soft);
   border-color: var(--accent);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 550; /* Preserva métricas estáticas e elimina layout shift */
 }
 
 .color-dot {

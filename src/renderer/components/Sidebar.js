@@ -1,18 +1,17 @@
 /**
  * FITA / MEDIAFORGE - COMPONENTE SIDEBAR (Sidebar.js)
- * Navegação por abas, badge dinâmico da fila e monitor de integridade.
+ * Navegação simplificada (Baixar, Histórico, Ajustes) e acoplamento do modal de destino.
  */
 
 export class Sidebar {
   constructor(options = {}) {
     this.onViewChange = options.onViewChange || (() => {});
-    this.onOpenDestination = options.onOpenDestination || (() => {});
+    this.onOpenDestinationModal = options.onOpenDestinationModal || (() => {});
   }
 
   mount(container = document.querySelector(".sidebar")) {
     if (!container) return;
     this.container = container;
-    this.countBadge = container.querySelector("#nav-queue-count");
     this.destPath = container.querySelector("#dest-path");
     this.engineStatus = container.querySelector("#engine-status-text");
 
@@ -20,24 +19,27 @@ export class Sidebar {
     navButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
         const view = btn.dataset.view;
+        this.setActiveView(view);
         this.onViewChange(view);
       });
     });
 
     const destBtn = container.querySelector("#btn-dest");
     if (destBtn) {
-      destBtn.addEventListener("click", () => this.onOpenDestination());
+      destBtn.addEventListener("click", () => this.onOpenDestinationModal());
     }
   }
 
-  setQueueCount(count) {
-    if (!this.countBadge) return;
-    this.countBadge.textContent = count;
-    if (count > 0) {
-      this.countBadge.classList.remove("hidden");
-    } else {
-      this.countBadge.classList.add("hidden");
-    }
+  setActiveView(view) {
+    if (!this.container) return;
+    const navButtons = this.container.querySelectorAll(".nav button");
+    navButtons.forEach((b) => {
+      if (b.dataset.view === view) {
+        b.setAttribute("aria-current", "page");
+      } else {
+        b.removeAttribute("aria-current");
+      }
+    });
   }
 
   setDestination(path) {

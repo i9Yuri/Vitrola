@@ -1,0 +1,56 @@
+/* ==========================================================================
+   FITA / MEDIAFORGE - FRAMELESS WINDOW ARCHITECTURE (window.css)
+   Elimina janela aninhada e estabelece preenchimento total 100vw/100vh.
+   ========================================================================== */
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--win);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  place-items: initial;
+}
+
+/* Container raiz ocupa 100% da viewport nativa */
+.window {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  background: var(--win);
+}
+
+/* Área de arraste nativa da barra de título */
+.titlebar {
+  -webkit-app-region: drag;
+  user-select: none;
+  cursor: default;
+  flex: none;
+}
+
+/* Elementos clicáveis não podem propagar o arraste da janela */
+.titlebar button,
+.titlebar input,
+.titlebar select,
+.titlebar a,
+.tb-actions,
+.tb-menu,
+.round,
+.brand {
+  -webkit-app-region: no-drag;
+}

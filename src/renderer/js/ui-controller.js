@@ -5,6 +5,9 @@
 
 import { themeManager } from "./theme-manager.js";
 import { ytdlpManager } from "./ytdlp-manager.js";
+import { minimizeWindow, maximizeWindow, closeWindow } from "../../main/ipc/window-controls.js";
+import { selectDirectory } from "../../main/ipc/filesystem-handler.js";
+import { HistoryModal } from "../components/HistoryModal.js";
 
 // Pseudo-random deterministic generator for waveforms
 function createRng(seed) {
@@ -88,6 +91,10 @@ class UIController {
     this.modalSettings = document.getElementById("modal-settings");
     this.modalLibrary = document.getElementById("modal-library");
     this.libraryList = document.getElementById("library-list");
+    this.modalDest = document.getElementById("modal-dest");
+    this.destModalPath = document.getElementById("dest-modal-path");
+    this.btnDestOpenFolder = document.getElementById("btn-dest-open-folder");
+    this.btnDestChangeFolder = document.getElementById("btn-dest-change-folder");
     this.toast = document.getElementById("toast");
     this.toastMsg = document.getElementById("toast-msg");
 
@@ -112,11 +119,9 @@ class UIController {
         const view = btn.dataset.view;
         if (view === "settings") {
           this.openModal(this.modalSettings);
-        } else if (view === "library") {
+        } else if (view === "history" || view === "library") {
           this.loadHistory();
           this.openModal(this.modalLibrary);
-        } else if (view === "queue") {
-          this.scrollToQueue();
         } else {
           this.navBtns.forEach((b) => b.removeAttribute("aria-current"));
           btn.setAttribute("aria-current", "page");
@@ -125,9 +130,18 @@ class UIController {
       });
     });
 
-    // Destination folder
+    // Destination folder modal & actions
     if (this.btnDest) {
-      this.btnDest.addEventListener("click", () => this.openDestinationFolder());
+      this.btnDest.addEventListener("click", () => this.openDestModal());
+    }
+    if (this.btnDestOpenFolder) {
+      this.btnDestOpenFolder.addEventListener("click", () => {
+        this.openDestinationFolder();
+        this.closeModals();
+      });
+    }
+    if (this.btnDestChangeFolder) {
+      this.btnDestChangeFolder.addEventListener("click", () => this.changeDestinationFolder());
     }
 
     // Engine badge click -> open Settings
@@ -358,6 +372,32 @@ class UIController {
       }
     } catch (e) {
       this.showToast("Erro ao abrir pasta", "error");
+    }
+  }
+
+  openDestModal() {
+    const current = this.destPath?.title || "~/Downloads/MediaForge";
+    if (this.destModalPath) this.destModalPath.textContent = current;
+    this.openModal(this.modalDest);
+  }
+
+  async changeDestinationFolder() {
+    try {
+      const res = await selectDirectory(this.config?.effective_download_dir);
+      if (!res.canceled && (res.path || res.selectedPath)) {
+        const newPath = res.path || res.selectedPath;
+        if (this.destPath) {
+          this.destPath.textContent = newPath.replace(/\/home\/[^/]+/, "~");
+          this.destPath.title = newPath;
+        }
+        if (this.destModalPath) {
+          this.destModalPath.textContent = newPath;
+        }
+        this.showToast(`Pasta de destino alterada: ${newPath}`, "success");
+        this.closeModals();
+      }
+    } catch (e) {
+      this.showToast("Falha ao alterar pasta de destino", "error");
     }
   }
 
@@ -796,32 +836,14 @@ class UIController {
   }
 
   renderHistory(items) {
-    if (!this.libraryList) return;
-    if (items.length === 0) {
-      this.libraryList.innerHTML = `<p class="q-empty">Nenhum download concluído anteriormente.</p>`;
-      return;
+    if (!this.historyModalInstance) {
+      this.historyModalInstance = new HistoryModal({
+        modalElement: this.modalLibrary,
+        listElement: this.libraryList,
+        onToast: (msg, type) => this.showToast(msg, type),
+      });
     }
-
-    this.libraryList.innerHTML = items
-      .map(
-        (h) => `
-      <div class="dl done" style="background:var(--surface);margin-bottom:8px">
-        <div class="dl-body">
-          <div class="dl-top">
-            <span class="dl-title">${h.title || "Download"}</span>
-            <span class="ok"><svg class="i"><use href="#i-check"/></svg>${h.total_size || "Concluído"}</span>
-          </div>
-          <div class="dl-sub">${h.filename || h.mode || ""} • ${new Date((h.completed_at || h.updated_at) * 1000).toLocaleDateString()}</div>
-        </div>
-        <button class="x btn-open-hist" data-path="${h.filepath || ""}" title="Abrir pasta"><svg class="i"><use href="#i-folder"/></svg></button>
-      </div>
-    `
-      )
-      .join("");
-
-    this.libraryList.querySelectorAll(".btn-open-hist").forEach((btn) => {
-      btn.addEventListener("click", () => this.openDestinationFolder());
-    });
+    this.historyModalInstance.render(items);
   }
 
   // --------------------------------------------------------------------------
@@ -847,26 +869,15 @@ class UIController {
   }
 
   // --------------------------------------------------------------------------
-  // Window Actions (Nativas ou Web Fallback)
+  // Window Actions (Nativas via IPC / Desktop Runner / Fallback)
   // --------------------------------------------------------------------------
-  handleWindowAction(action) {
-    if (window.electronAPI && window.electronAPI.windowAction) {
-      window.electronAPI.windowAction(action);
-    } else {
-      // Fallback para containers de janela ou navegadores
-      if (action === "close") {
-        if (confirm("Deseja fechar a aplicação?")) {
-          window.close();
-        }
-      } else if (action === "maximize") {
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(() => {});
-        } else {
-          document.exitFullscreen().catch(() => {});
-        }
-      } else if (action === "minimize") {
-        this.showToast("Janela minimizada", "warning");
-      }
+  async handleWindowAction(action) {
+    if (action === "minimize") {
+      await minimizeWindow();
+    } else if (action === "maximize") {
+      await maximizeWindow();
+    } else if (action === "close") {
+      await closeWindow();
     }
   }
 }

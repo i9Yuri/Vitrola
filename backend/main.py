@@ -152,6 +152,36 @@ class MediaForgeHandler(BaseHTTPRequestHandler):
             self._send_json(res, 200)
             return
 
+        # 3.2 API: Check File Existence & Reveal
+        if path == "/api/check-file":
+            file_path = body.get("path")
+            if file_path:
+                p = Path(file_path).expanduser().resolve()
+                if p.is_file():
+                    res = open_in_file_manager(str(p))
+                    self._send_json({"success": True, "exists": True, "opened": str(p)}, 200)
+                    return
+            self._send_json(
+                {
+                    "success": False,
+                    "exists": False,
+                    "error": "O arquivo não foi encontrado no disco. Ele pode ter sido movido ou excluído.",
+                },
+                200,
+            )
+            return
+
+        # 3.3 API: Window Action Dispatcher
+        if path == "/api/window/action":
+            action = body.get("action", "")
+            try:
+                from backend.desktop import dispatch_window_action
+                res = dispatch_window_action(action)
+                self._send_json(res, 200)
+            except Exception as e:
+                self._send_json({"success": False, "error": str(e)}, 200)
+            return
+
         # 4. API: Update Configuration
         if path == "/api/config":
             if save_config(body):

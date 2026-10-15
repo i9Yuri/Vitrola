@@ -160,31 +160,42 @@ html[data-theme="light"] {
 }
 
 /* Sobrescrita de Acento Fixo (se selecionado pelo usuário nas preferências) */
-html[data-accent="amber"] {
+html[data-accent="amber"],
+html[data-accent="amber"] [data-mode] {
+  --accent: var(--accent-amber);
+  --ink: var(--accent-amber-ink);
+  --soft: var(--accent-amber-soft);
   --audio: var(--accent-amber);
   --audio-ink: var(--accent-amber-ink);
   --audio-soft: var(--accent-amber-soft);
 }
 
-html[data-accent="violet"] {
+html[data-accent="violet"],
+html[data-accent="violet"] [data-mode] {
+  --accent: var(--accent-violet);
+  --ink: var(--accent-violet-ink);
+  --soft: var(--accent-violet-soft);
   --video: var(--accent-violet);
   --video-ink: var(--accent-violet-ink);
   --video-soft: var(--accent-violet-soft);
 }
 
-html[data-accent="emerald"] {
+html[data-accent="emerald"],
+html[data-accent="emerald"] [data-mode] {
   --accent: var(--accent-emerald);
   --ink: var(--accent-emerald-ink);
   --soft: var(--accent-emerald-soft);
 }
 
-html[data-accent="rose"] {
+html[data-accent="rose"],
+html[data-accent="rose"] [data-mode] {
   --accent: var(--accent-rose);
   --ink: var(--accent-rose-ink);
   --soft: var(--accent-rose-soft);
 }
 
-html[data-accent="cyan"] {
+html[data-accent="cyan"],
+html[data-accent="cyan"] [data-mode] {
   --accent: var(--accent-cyan);
   --ink: var(--accent-cyan-ink);
   --soft: var(--accent-cyan-soft);
