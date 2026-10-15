@@ -63,7 +63,11 @@
     <symbol id="max" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></symbol>
     <symbol id="x" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
     <symbol id="trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></symbol>
+    <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+    <symbol id="retry" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></symbol>
     <!-- Aliases para compatibilidade legada -->
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+    <symbol id="i-retry" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></symbol>
     <symbol id="i-min" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></symbol>
     <symbol id="i-max" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
@@ -363,6 +367,42 @@
           <span id="history-total-count" style="font-size: 12px; color: var(--mut); font-weight: 500;">0 itens</span>
           <button id="btn-clear-history" class="btn-secondary" style="height: 32px; font-size: 12px; padding: 0 14px; color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
             Limpar histórico
+          </button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Modal de Detalhes da Falha (Diagnóstico) -->
+    <div id="modal-error-details" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="error-modal-title">
+      <div class="modal-sheet" style="max-width: 580px; max-height: 85vh; display: flex; flex-direction: column;">
+        <header class="modal-header">
+          <h3 id="error-modal-title" style="display: flex; align-items: center; gap: 8px;">
+            <svg class="i" style="color: #ef4444;"><use href="#info"/></svg>
+            Detalhes da Falha
+          </h3>
+          <button class="x btn-close-modal" aria-label="Fechar diagnóstico"><svg class="i"><use href="#x"/></svg></button>
+        </header>
+        <div class="modal-content" style="flex: 1; overflow-y: auto; padding: 16px; display: grid; gap: 14px;">
+          <div class="error-summary-box" style="padding: 12px 14px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; color: var(--tx);">
+            <div id="error-modal-summary" style="font-weight: 600; font-size: 13.5px; margin-bottom: 4px;">Ocorreu uma falha durante o processamento da mídia.</div>
+            <div id="error-modal-suggestion" style="font-size: 12.5px; color: var(--mut); line-height: 1.4;">Tente reexecutar com o botão de repetição sem embutir miniaturas.</div>
+          </div>
+          
+          <details class="error-log-drawer" style="background: var(--s1); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;">
+            <summary style="cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--mut); user-select: none;">
+              Ver log técnico completo
+            </summary>
+            <div style="margin-top: 10px; display: grid; gap: 8px;">
+              <textarea id="error-modal-raw-log" readonly rows="8" style="width: 100%; font-family: monospace; font-size: 11.5px; background: var(--bg); color: var(--tx); border: 1px solid var(--line); border-radius: 6px; padding: 8px; resize: vertical;"></textarea>
+              <button type="button" id="btn-copy-error-log" class="btn-secondary" style="height: 30px; font-size: 12px; justify-self: end; display: flex; align-items: center; gap: 6px;">
+                <svg class="i"><use href="#clip"/></svg>Copiar Log
+              </button>
+            </div>
+          </details>
+        </div>
+        <footer class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" id="btn-error-retry" class="btn main" style="height: 34px; font-size: 12.5px; padding: 0 16px; display: flex; align-items: center; gap: 6px;">
+            <svg class="i"><use href="#retry"/></svg>Tentar Novamente
           </button>
         </footer>
       </div>

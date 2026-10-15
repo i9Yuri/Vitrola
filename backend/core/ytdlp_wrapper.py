@@ -336,6 +336,21 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
     }
 
 
+SUPPORTED_THUMBNAIL_CONTAINERS = {
+    "mp3", "mkv", "mka", "ogg", "opus", "flac", "m4a", "mp4", "m4v", "mov"
+}
+
+
+def can_embed_thumbnail(container_format: Optional[str] = None, audio_codec: Optional[str] = None) -> bool:
+    """Verifica se o contêiner/formato suporta embutição nativa de miniaturas pelo yt-dlp/Mutagen.
+    Contêineres brutos WebM não suportam embutição e causam encerramento fatal no pós-processamento.
+    """
+    if not container_format:
+        return False
+    fmt = str(container_format).strip().lower()
+    return fmt in SUPPORTED_THUMBNAIL_CONTAINERS
+
+
 def build_download_command(
     url: str,
     mode: str,
@@ -396,8 +411,20 @@ def build_download_command(
         # Embed complete metadata and album art / thumbnail
         if embed_metadata:
             cmd.append("--add-metadata")
+
         if embed_thumbnail:
-            cmd.append("--embed-thumbnail")
+            # Em modo original ou quando o contêiner bruto é WebM, suprime estritamente
+            # --embed-thumbnail para prevenir erro fatal do Mutagen/yt-dlp.
+            # Salva a miniatura adjacente com --write-thumbnail.
+            is_incompatible = (
+                is_original
+                or (target_format and str(target_format).lower() in ("webm", "original", "source"))
+            ) and (not target_format or not can_embed_thumbnail(target_format))
+
+            if is_incompatible:
+                cmd.append("--write-thumbnail")
+            else:
+                cmd.append("--embed-thumbnail")
 
         # Lyrics / subtitles embedding if requested
         if embed_subtitles:
@@ -424,8 +451,16 @@ def build_download_command(
 
         if embed_metadata:
             cmd.append("--add-metadata")
+
         if embed_thumbnail:
-            cmd.append("--embed-thumbnail")
+            is_incompatible = (
+                is_original
+                and (not target_format or not can_embed_thumbnail(target_format))
+            )
+            if is_incompatible:
+                cmd.append("--write-thumbnail")
+            else:
+                cmd.append("--embed-thumbnail")
 
         if embed_subtitles:
             lang = subtitle_lang if subtitle_lang else "pt,en.*"

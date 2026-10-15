@@ -2,6 +2,23 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.5.3] - 2026-10-15
+
+### Correção de Crash de Miniatura, Diagnóstico e Retentativa, Vinil Interativo e Estabilidade de Janela
+- **Saneamento Fatal de Pós-Processamento de Miniatura (yt-dlp/Mutagen)**:
+  - Criação da lista canônica `SUPPORTED_THUMBNAIL_CONTAINERS` (`mp3`, `mkv`, `mka`, `ogg`, `opus`, `flac`, `m4a`, `mp4`, `m4v`, `mov`) e verificação condicional em `can_embed_thumbnail(container_format)`.
+  - Supressão automática da flag `--embed-thumbnail` em streams brutos/WebM ou downloads no formato "Original", aplicando alternativamente `--write-thumbnail` para preservar a capa sem provocar exceções fatais do Mutagen.
+- **Subsistema de Diagnóstico de Erros e Retentativa Imediata**:
+  - Implementação de `ErrorModal` (`src/renderer/components/ErrorModal.js` e `frontend/components/ErrorModal.js`) com explicação acessível da falha, sugestão de ação corretiva e gaveta expansível de logs brutos com botão de cópia.
+  - Indicador visual rubro `.st.err` com botão de diagnóstico informacional `[i]` e ação direta "Tentar novamente" (`.btn-retry-task`).
+  - Handlers IPC (`download:retryTask`, `download:getErrorDetails`) e endpoints no backend (`POST /api/download/retry`, `GET /api/download/error-details`) que resetam o estado da tarefa em Recentes sem duplicar registros no Histórico.
+- **Desbloqueio Irrestrito e Cinemática do Disco de Vinil**:
+  - Desativação explícita de captura de eventos de ponteiro no pseudo-elemento overlay `.disc:after` (`pointer-events: none !important;`) e elevação da camada do componente `.disc` (`z-index: 10 !important;`).
+  - Cinemática polar suave via `setPointerCapture`, cálculo estático do centro no pointerdown, rastreamento contínuo de rotação e retomada do giro automático sem saltos angulares.
+- **Estabilidade do Ciclo de Vida da Janela Frameless no Linux**:
+  - Prevenção do crash após minimizar com flags Chromium (`disable-renderer-backgrounding`, `disable-backgrounding-occluded-windows`).
+  - Término limpo e imediato sem congelamento através da rotina `forceTeardown`, enviando `SIGKILL` a subprocessos pendentes de `yt-dlp` e `ffmpeg`, desvinculando listeners de `close`, destruindo a janela nativa e finalizando a aplicação com `app.exit(0)`.
+
 ## [2.5.2] - 2026-10-15
 
 ### Saneamento de Identidade no Header, Vinil Polar Contínuo e Skeleton Shimmer Aprimorado

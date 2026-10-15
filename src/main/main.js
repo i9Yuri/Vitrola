@@ -9,6 +9,7 @@ const os = require('os');
 const fs = require('fs');
 const { getStorageTelemetry } = require('./ipc/storage-telemetry');
 const { readClipboardText } = require('./ipc/clipboard-handler');
+const { registerDownloadHandlers } = require('./ipc/download-handler');
 
 const DIAGNOSTICS_DIR = path.join(__dirname, '../../_dev/diagnostics');
 const LOG_FILE = path.join(DIAGNOSTICS_DIR, 'boot.log');
@@ -121,45 +122,56 @@ const windowController = {
     });
   },
 
-  terminateAppGracefully(win) {
-    console.log('\x1b[33m[LIFECYCLE] Executando encerramento gracioso desacoplado...\x1b[0m');
-    // a) Disparar interrupção imediata não bloqueante sobre processos do pool
+  forceTeardown(win) {
+    console.log('\x1b[33m[LIFECYCLE] Executando forceTeardown imediato (SIGKILL + destroy + exit)...\x1b[0m');
+    // a) Enviar sinal SIGKILL imediato para todos os processos filhos de yt-dlp/ffmpeg
     try {
       for (const proc of activeProcessesPool) {
         if (proc && !proc.killed) {
           try {
-            proc.kill('SIGTERM');
+            proc.kill('SIGKILL');
           } catch (_) {}
         }
       }
       activeProcessesPool.clear();
     } catch (poolErr) {
-      logStartupDiagnostic('terminateAppGracefully:procPool', { message: poolErr.message });
+      logStartupDiagnostic('forceTeardown:procPool', { message: poolErr.message });
     }
 
-    // b) Remover listeners de eventos de IPC e da janela para prevenir chamadas concorrentes
+    // b) Limpar listeners da janela para eliminar qualquer deadlock no evento 'close'
     try {
+      if (win && !win.isDestroyed()) {
+        win.removeAllListeners('close');
+        win.removeAllListeners();
+      }
       if (ipcMain) {
         ipcMain.removeAllListeners();
       }
-      if (win && !win.isDestroyed()) {
-        win.removeAllListeners();
-      }
     } catch (listenerErr) {
-      logStartupDiagnostic('terminateAppGracefully:removeListeners', { message: listenerErr.message });
+      logStartupDiagnostic('forceTeardown:removeListeners', { message: listenerErr.message });
     }
 
-    // c) Destruir atômica e imediatamente a janela e encerrar a aplicação (< 300ms)
-    setImmediate(() => {
-      try {
-        if (win && !win.isDestroyed()) {
-          win.destroy();
-        }
-      } catch (_) {}
-      if (app) {
-        app.quit();
+    // c) Destruir instantaneamente o contexto nativo da janela (< 100ms)
+    try {
+      if (win && !win.isDestroyed()) {
+        win.destroy();
       }
-    });
+    } catch (_) {}
+
+    // d) Chamar app.exit(0) na linha imediatamente seguinte
+    if (app) {
+      try {
+        app.exit(0);
+      } catch (_) {
+        process.exit(0);
+      }
+    } else {
+      process.exit(0);
+    }
+  },
+
+  terminateAppGracefully(win) {
+    this.forceTeardown(win);
   }
 };
 
@@ -291,6 +303,11 @@ function registerIpcHandlers() {
   });
 
   // window controls IPC
+  ipcMain.on('window:minimize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) windowController.minimizeWindow(win);
+  });
+
   ipcMain.handle('window:minimize', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) windowController.minimizeWindow(win);
@@ -309,6 +326,17 @@ function registerIpcHandlers() {
       }
     }
     return { success: false };
+  });
+
+  ipcMain.on('window:forceClose', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    windowController.forceTeardown(win);
+  });
+
+  ipcMain.handle('window:forceClose', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    windowController.forceTeardown(win);
+    return { success: true, action: 'forceClose' };
   });
 
   ipcMain.handle('window:closeApp', async (event) => {
@@ -331,14 +359,17 @@ function registerIpcHandlers() {
         win.maximize();
         return { success: true, isMaximized: true };
       }
-    } else if (action === 'close') {
-      windowController.terminateAppGracefully(win);
+    } else if (action === 'close' || action === 'force_close') {
+      windowController.forceTeardown(win);
       return { success: true, action: 'close' };
     } else if (action === 'start_drag') {
       return { success: true, action: 'start_drag' };
     }
     return { success: false, error: `Ação desconhecida: ${action}` };
   });
+
+  // Registra handlers do subsistema de download (retry & error details)
+  registerDownloadHandlers(ipcMain);
 
   // History operations fallback
   ipcMain.handle('history:getAggregated', async () => {

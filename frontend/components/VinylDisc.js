@@ -55,39 +55,54 @@ export class VinylDisc {
     // Apenas botão principal (esquerdo) ou toque
     if (e.button !== undefined && e.button !== 0) return;
 
+    try {
+      e.preventDefault();
+    } catch (_) {}
+
     const rect = this.vinyl.getBoundingClientRect();
     this.centerX = rect.left + rect.width / 2;
     this.centerY = rect.top + rect.height / 2;
 
-    this.currentAngle = this.getComputedRotation(this.vinyl);
-    this.lastPointerAngle = this.calculateAngle(e.clientX, e.clientY);
+    this.baseAngle = this.getComputedRotation(this.vinyl);
+    this.startAngle = Math.atan2(e.clientY - this.centerY, e.clientX - this.centerX) * (180 / Math.PI);
+    this.currentAngle = this.baseAngle;
 
     this.isDragging = true;
     this.state = "DRAGGING_MANUAL";
     this.activePointerId = e.pointerId;
 
     this.vinyl.classList.add("dragging");
+    this.vinyl.style.animationPlayState = "paused";
     this.vinyl.style.transform = `rotate(${this.currentAngle}deg)`;
 
     try {
-      this.vinyl.setPointerCapture(e.pointerId);
+      if (typeof e.currentTarget.setPointerCapture === "function") {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }
     } catch (_) {}
   }
 
   processDrag(e) {
     if (!this.isDragging) return;
+    if (e.buttons !== undefined && e.buttons === 0) {
+      this.endDrag(e);
+      return;
+    }
 
-    const currentPointerAngle = this.calculateAngle(e.clientX, e.clientY);
-    let delta = currentPointerAngle - this.lastPointerAngle;
+    try {
+      e.preventDefault();
+    } catch (_) {}
+
+    const currentPointerAngle = Math.atan2(e.clientY - this.centerY, e.clientX - this.centerX) * (180 / Math.PI);
+    let delta = currentPointerAngle - this.startAngle;
 
     // Normalização de transição entre quadrantes (-180° a +180°)
     if (delta > 180) delta -= 360;
     if (delta < -180) delta += 360;
 
-    this.currentAngle = (this.currentAngle + delta) % 360;
+    const angle = Math.round(this.baseAngle + delta);
+    this.currentAngle = ((angle % 360) + 360) % 360;
     this.vinyl.style.transform = `rotate(${this.currentAngle}deg)`;
-
-    this.lastPointerAngle = currentPointerAngle;
   }
 
   endDrag(e) {
@@ -97,12 +112,15 @@ export class VinylDisc {
 
     if (this.activePointerId !== null) {
       try {
-        this.vinyl.releasePointerCapture(this.activePointerId);
+        if (typeof this.vinyl.releasePointerCapture === "function") {
+          this.vinyl.releasePointerCapture(this.activePointerId);
+        }
       } catch (_) {}
       this.activePointerId = null;
     }
 
     // Retoma suavemente o estado de rotação automática sem saltos de ângulo
+    this.vinyl.style.animationPlayState = "";
     this.vinyl.style.setProperty("--current-angle", `${this.currentAngle}deg`);
     this.vinyl.style.setProperty("--start-deg", `${this.currentAngle}deg`);
     this.vinyl.style.transform = "";
@@ -129,6 +147,14 @@ export class VinylDisc {
     }
   }
 }
+
+export const VinylDiscController = {
+  init(discSelector = ".disc") {
+    const instance = new VinylDisc();
+    instance.mount(document.querySelector(discSelector));
+    return instance;
+  }
+};
 
 export const VinylTracker = VinylDisc;
 

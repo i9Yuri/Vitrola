@@ -8,9 +8,19 @@ const { contextBridge, ipcRenderer } = require('electron');
 const electronAPI = {
   // Window Controls
   windowAction: (action) => ipcRenderer.invoke('window:action', action),
-  minimize: () => ipcRenderer.invoke('window:minimize'),
+  minimize: () => {
+    try { ipcRenderer.send('window:minimize'); } catch (_) {}
+    return ipcRenderer.invoke('window:minimize');
+  },
   maximize: () => ipcRenderer.invoke('window:toggleMaximize'),
-  close: () => ipcRenderer.invoke('window:closeApp'),
+  close: () => {
+    try { ipcRenderer.send('window:forceClose'); } catch (_) {}
+    return ipcRenderer.invoke('window:closeApp');
+  },
+  forceClose: () => {
+    try { ipcRenderer.send('window:forceClose'); } catch (_) {}
+    return ipcRenderer.invoke('window:forceClose');
+  },
   startWindowDrag: () => ipcRenderer.invoke('window:action', 'start_drag'),
   onMinimizedState: (callback) => {
     if (typeof callback === 'function') {
@@ -36,6 +46,14 @@ const electronAPI = {
   clipboardReadText: () => ipcRenderer.invoke('clipboard:read-text'),
   clipboard: {
     readText: () => ipcRenderer.invoke('clipboard:read-text')
+  },
+
+  // Download Diagnostics & Retry
+  retryTask: (taskId) => ipcRenderer.invoke('download:retryTask', taskId),
+  getErrorDetails: (taskId) => ipcRenderer.invoke('download:getErrorDetails', taskId),
+  download: {
+    retryTask: (taskId) => ipcRenderer.invoke('download:retryTask', taskId),
+    getErrorDetails: (taskId) => ipcRenderer.invoke('download:getErrorDetails', taskId)
   },
 
   // System & App Metadata

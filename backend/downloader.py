@@ -59,6 +59,7 @@ class DownloadTask:
         self.filename = ""
         self.filepath = ""
         self.error: Optional[str] = None
+        self.error_details: Optional[Dict[str, Any]] = None
         self.created_at = time.time()
         self.updated_at = time.time()
         self.logs: List[str] = []
@@ -103,6 +104,7 @@ class DownloadTask:
             "filename": self.filename,
             "filepath": self.filepath,
             "error": self.error,
+            "error_details": self.error_details,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
@@ -184,6 +186,32 @@ class DownloadManager:
     def get_task(self, task_id: str) -> Optional[DownloadTask]:
         with self._lock:
             return self.tasks.get(task_id)
+
+    def retry_task(self, task_id: str, suppress_thumbnail: bool = False) -> Optional[DownloadTask]:
+        with self._lock:
+            task = self.tasks.get(task_id)
+            if not task:
+                return None
+
+            # Se suppress_thumbnail for True ou se a falha anterior envolveu miniatura,
+            # desabilita estritamente embed_thumbnail para a tentativa de contingência
+            is_thumb_err = bool(task.error_details and task.error_details.get("isThumbnailError"))
+            if suppress_thumbnail or is_thumb_err:
+                task.options["embed_thumbnail"] = False
+
+            task.status = "queued"
+            task.progress_percent = 0.0
+            task.speed = "Reiniciando..."
+            task.eta = "--:--"
+            task.error = None
+            task.error_details = None
+            task.logs = []
+            task.updated_at = time.time()
+            task.broadcast()
+
+        thread = threading.Thread(target=self._run_task, args=(task,), daemon=True)
+        thread.start()
+        return task
 
     def get_history(self) -> List[Dict[str, Any]]:
         with self._lock:
@@ -431,15 +459,50 @@ class DownloadManager:
 
             else:
                 task.status = "failed"
-                # Extract most useful error snippet from logs
-                err_lines = [l for l in task.logs if "ERROR:" in l or "error:" in l.lower()]
-                task.error = err_lines[-1] if err_lines else f"Processo yt-dlp finalizou com código de erro {ret_code}"
+                raw_logs = "\n".join(task.logs)
+
+                # Detecção inteligente do erro de embutição de thumbnail
+                is_thumb_err = (
+                    "Supported filetypes for thumbnail embedding are:" in raw_logs
+                    or "Embedding thumbnail" in raw_logs
+                    or ("Postprocessing: Error" in raw_logs and "thumbnail" in raw_logs)
+                )
+
+                if is_thumb_err:
+                    summary = "O formato bruto extraído (WebM) não suporta miniatura embutida internamente."
+                    suggested = "Clique em 'Tentar novamente'. O download será reexecutado salvando a capa externamente sem travar o arquivo de áudio."
+                else:
+                    err_lines = [l for l in task.logs if "ERROR:" in l or "error:" in l.lower()]
+                    if err_lines:
+                        clean_err = re.sub(r"^.*ERROR:\s*", "", err_lines[-1], flags=re.I).strip()
+                        clean_err = re.sub(r"^Postprocessing:\s*", "", clean_err).strip()
+                        summary = clean_err or "Falha no pós-processamento do arquivo de mídia."
+                    else:
+                        summary = f"Processo yt-dlp finalizou com código de erro {ret_code}"
+                    suggested = "Tente novamente ou verifique se o link ainda está acessível."
+
+                task.error = summary
+                task.error_details = {
+                    "taskId": task.task_id,
+                    "summary": summary,
+                    "rawErrorLog": raw_logs or f"Processo finalizado com código {ret_code}",
+                    "suggestedAction": suggested,
+                    "isThumbnailError": is_thumb_err,
+                }
 
             task.broadcast()
 
         except Exception as e:
             task.status = "failed"
-            task.error = f"Exceção no gerenciador de download: {str(e)}"
+            summary = f"Exceção no gerenciador de download: {str(e)}"
+            task.error = summary
+            task.error_details = {
+                "taskId": task.task_id,
+                "summary": summary,
+                "rawErrorLog": str(e),
+                "suggestedAction": "Tente novamente.",
+                "isThumbnailError": False,
+            }
             task.broadcast()
 
 

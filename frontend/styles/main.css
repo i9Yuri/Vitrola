@@ -325,8 +325,8 @@ main, .main {
   width: 320px;
   height: 320px;
   border-radius: 50%;
-  pointer-events: auto;
-  z-index: 0;
+  pointer-events: auto !important;
+  z-index: 10 !important;
 }
 
 .disc:after {
@@ -334,6 +334,7 @@ main, .main {
   position: absolute;
   inset: 0;
   border-radius: 50%;
+  pointer-events: none !important;
   background: conic-gradient(
     from 30deg,
     transparent 0 10%,
@@ -354,14 +355,15 @@ main, .main {
     radial-gradient(circle, var(--acc, var(--accent)) 0 15%, #0a141c 15.5% 17%, transparent 17.5%),
     repeating-radial-gradient(circle, #0a141c 0 2px, #15283a 2px 4px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-  cursor: grab;
+  cursor: grab !important;
+  pointer-events: auto !important;
   touch-action: none;
   user-select: none;
 }
 
 .vinyl.dragging {
   animation: none !important;
-  cursor: grabbing;
+  cursor: grabbing !important;
 }
 
 @keyframes spinContinuous {
@@ -916,6 +918,45 @@ kbd {
 
 .st.err {
   color: #ef4444;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.st.err .btn-error-info {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.st.err .btn-error-info:hover {
+  background: rgba(239, 68, 68, 0.25);
+  transform: scale(1.1);
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.btn-retry-task {
+  color: var(--acc, var(--accent)) !important;
+}
+
+.btn-retry-task:hover {
+  background: color-mix(in srgb, var(--acc, #38bdf8) 15%, transparent) !important;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease, background 0.15s ease;
 }
 
 .bar {

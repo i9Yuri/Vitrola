@@ -14,6 +14,7 @@ import { Sidebar } from "../components/Sidebar.js";
 import { MediaSearchCard } from "../components/MediaSearchCard.js";
 import { SettingsModal } from "../components/SettingsModal.js";
 import { VinylDisc } from "../components/VinylDisc.js";
+import { ErrorModal } from "../components/ErrorModal.js";
 
 class UIController {
   constructor() {
@@ -88,6 +89,13 @@ class UIController {
     // Vinil Interativo com Arraste Polar
     this.vinylDisc = new VinylDisc();
     this.vinylDisc.mount(document.querySelector(".disc"));
+
+    // Modal de Diagnóstico de Erros
+    this.errorModal = new ErrorModal({
+      onRetry: (taskId) => this.retryTask(taskId),
+      onToast: (msg, type) => this.showToast(msg, type),
+    });
+    this.errorModal.mount();
   }
 
   cacheDom() {
@@ -630,13 +638,17 @@ class UIController {
         <span class="bar"><i id="bar-${taskId}" style="width: 0%"></i></span>
         <span id="txt-${taskId}">0%</span>
       </div>
-      <button class="ib btn-cancel-task" data-task-id="${taskId}" aria-label="Cancelar download">
-        <svg class="i"><use href="#x"/></svg>
-      </button>
+      <div class="row-actions" id="act-${taskId}">
+        <button class="ib btn-cancel-task" data-task-id="${taskId}" aria-label="Cancelar download">
+          <svg class="i"><use href="#x"/></svg>
+        </button>
+      </div>
     `;
 
     const cancelBtn = row.querySelector(".btn-cancel-task");
-    cancelBtn.addEventListener("click", () => this.cancelTask(taskId));
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", () => this.cancelTask(taskId));
+    }
 
     this.recentList.prepend(row);
 
@@ -648,12 +660,17 @@ class UIController {
       txtEl: row.querySelector(`#txt-${taskId}`),
       stEl: row.querySelector(`#st-${taskId}`),
       eventSource: null,
+      isFailed: false,
     });
   }
 
   listenTaskProgress(taskId) {
     const task = this.activeTasks.get(taskId);
     if (!task) return;
+
+    if (task.eventSource) {
+      task.eventSource.close();
+    }
 
     const es = new EventSource(`/api/progress/${taskId}`);
     task.eventSource = es;
@@ -698,12 +715,17 @@ class UIController {
         task.stEl.innerHTML = `<svg class="i"><use href="#check"/></svg>Concluído`;
       }
 
-      const btn = row.querySelector(".btn-cancel-task");
-      if (btn) {
-        btn.className = "ib btn-open-folder";
-        btn.setAttribute("aria-label", "Abrir pasta de destino");
-        btn.innerHTML = `<svg class="i"><use href="#folder"/></svg>`;
-        btn.onclick = () => this.openDestinationFolder();
+      const actCol = row.querySelector(`#act-${taskId}`) || row.querySelector(".row-actions");
+      if (actCol) {
+        actCol.innerHTML = `
+          <button class="ib btn-open-folder" aria-label="Abrir pasta de destino">
+            <svg class="i"><use href="#folder"/></svg>
+          </button>
+        `;
+        const openBtn = actCol.querySelector(".btn-open-folder");
+        if (openBtn) {
+          openBtn.onclick = () => this.openDestinationFolder();
+        }
       }
     }
 
@@ -716,15 +738,140 @@ class UIController {
     const task = this.activeTasks.get(taskId);
     if (!task) return;
 
-    this.activeTasks.delete(taskId);
+    task.isFailed = true;
 
     const row = task.rowEl;
     if (row && task.stEl) {
       task.stEl.className = "st err";
-      task.stEl.innerHTML = `<svg class="i"><use href="#x"/></svg>Erro`;
+      task.stEl.innerHTML = `
+        <svg class="i"><use href="#x"/></svg>
+        <span>Erro</span>
+        <button type="button" class="ib btn-error-info" data-task-id="${taskId}" title="Ver detalhes da falha">
+          <svg class="i"><use href="#info"/></svg>
+        </button>
+      `;
+
+      const infoBtn = task.stEl.querySelector(".btn-error-info");
+      if (infoBtn) {
+        infoBtn.addEventListener("click", () => this.openErrorDetails(taskId));
+      }
     }
 
-    this.showToast(`Falha no download: ${error || "Erro desconhecido"}`, "error");
+    const actCol = row ? (row.querySelector(`#act-${taskId}`) || row.querySelector(".row-actions")) : null;
+    if (actCol) {
+      actCol.innerHTML = `
+        <button type="button" class="ib btn-retry-task" data-task-id="${taskId}" title="Tentar novamente">
+          <svg class="i"><use href="#retry"/></svg>
+        </button>
+        <button type="button" class="ib btn-cancel-task" data-task-id="${taskId}" aria-label="Remover">
+          <svg class="i"><use href="#trash"/></svg>
+        </button>
+      `;
+
+      const retryBtn = actCol.querySelector(".btn-retry-task");
+      if (retryBtn) {
+        retryBtn.addEventListener("click", () => this.retryTask(taskId));
+      }
+
+      const cancelBtn = actCol.querySelector(".btn-cancel-task");
+      if (cancelBtn) {
+        cancelBtn.addEventListener("click", () => this.cancelTask(taskId));
+      }
+    }
+
+    this.showToast(`Falha no download: ${error || "Erro no processamento"}`, "error");
+  }
+
+  async openErrorDetails(taskId) {
+    let details = null;
+    try {
+      if (window.electronAPI && typeof window.electronAPI.getErrorDetails === "function") {
+        details = await window.electronAPI.getErrorDetails(taskId);
+      }
+    } catch (_) {}
+
+    if (!details) {
+      try {
+        const res = await fetch(`/api/download/error-details?taskId=${encodeURIComponent(taskId)}`);
+        const json = await res.json();
+        if (json && json.success && json.error_details) {
+          details = json.error_details;
+        }
+      } catch (_) {}
+    }
+
+    if (!details) {
+      details = {
+        taskId,
+        summary: "Ocorreu uma falha durante o processamento da mídia.",
+        rawErrorLog: "Nenhum detalhe técnico adicional arquivado.",
+        suggestedAction: "Clique em 'Tentar novamente' para reiniciar.",
+        isThumbnailError: false
+      };
+    }
+
+    this.errorModal.open(details, (tid) => this.retryTask(tid));
+  }
+
+  async retryTask(taskId) {
+    const task = this.activeTasks.get(taskId);
+    const row = task ? task.rowEl : document.getElementById(`row-task-${taskId}`);
+
+    if (row) {
+      const stEl = row.querySelector(`#st-${taskId}`);
+      if (stEl) {
+        stEl.className = "st";
+        stEl.innerHTML = `
+          <span class="bar"><i id="bar-${taskId}" style="width: 0%"></i></span>
+          <span id="txt-${taskId}">Reiniciando...</span>
+        `;
+        if (task) {
+          task.barEl = stEl.querySelector(`#bar-${taskId}`);
+          task.txtEl = stEl.querySelector(`#txt-${taskId}`);
+        }
+      }
+
+      const actCol = row.querySelector(`#act-${taskId}`) || row.querySelector(".row-actions");
+      if (actCol) {
+        actCol.innerHTML = `
+          <button class="ib btn-cancel-task" data-task-id="${taskId}" aria-label="Cancelar download">
+            <svg class="i"><use href="#x"/></svg>
+          </button>
+        `;
+        const cancelBtn = actCol.querySelector(".btn-cancel-task");
+        if (cancelBtn) {
+          cancelBtn.addEventListener("click", () => this.cancelTask(taskId));
+        }
+      }
+    }
+
+    if (task) {
+      task.isFailed = false;
+    }
+
+    this.showToast("Reexecutando download...", "info");
+
+    try {
+      let resData = null;
+      if (window.electronAPI && typeof window.electronAPI.retryTask === "function") {
+        resData = await window.electronAPI.retryTask(taskId);
+      } else {
+        const res = await fetch("/api/download/retry", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ taskId, suppressThumbnail: true }),
+        });
+        resData = await res.json();
+      }
+
+      if (resData && resData.success) {
+        this.listenTaskProgress(taskId);
+      } else {
+        this.markTaskFailed(taskId, resData?.error || "Falha ao reiniciar tarefa");
+      }
+    } catch (err) {
+      this.markTaskFailed(taskId, err.message);
+    }
   }
 
   cancelTask(taskId) {

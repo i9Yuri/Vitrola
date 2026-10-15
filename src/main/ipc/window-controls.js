@@ -49,6 +49,10 @@ export async function maximizeWindow() {
 
 export async function closeWindow() {
   if (window.electronAPI) {
+    if (typeof window.electronAPI.forceClose === 'function') {
+      try { window.electronAPI.forceClose(); } catch (_) {}
+      return { success: true, action: 'close' };
+    }
     if (typeof window.electronAPI.close === 'function') {
       window.electronAPI.close().catch(() => {});
       return { success: true, action: 'close' };

@@ -103,6 +103,29 @@ class VitrolaHandler(BaseHTTPRequestHandler):
             self._send_json({"success": True, "text": text}, 200)
             return
 
+        # 4.2 API: Download Error Details
+        if path == "/api/download/error-details":
+            query = parse_qs(parsed.query)
+            task_id = query.get("taskId", [""])[0] or query.get("task_id", [""])[0]
+            task = manager.get_task(task_id) if task_id else None
+            if task and task.error_details:
+                self._send_json({"success": True, "error_details": task.error_details}, 200)
+            else:
+                self._send_json(
+                    {
+                        "success": True,
+                        "error_details": {
+                            "taskId": task_id,
+                            "summary": "Ocorreu uma falha no processamento deste download.",
+                            "rawErrorLog": "Nenhum log adicional arquivado para esta tarefa.",
+                            "suggestedAction": "Clique em 'Tentar novamente' para reiniciar.",
+                            "isThumbnailError": False,
+                        },
+                    },
+                    200,
+                )
+            return
+
         # 5. Static frontend files
         if path == "/" or path == "/index.html":
             self._serve_file(FRONTEND_DIR / "index.html", "text/html; charset=utf-8")
@@ -161,6 +184,20 @@ class VitrolaHandler(BaseHTTPRequestHandler):
                 return
             task = manager.create_task(url, body)
             self._send_json({"success": True, "task_id": task.task_id})
+            return
+
+        # 2.1 API: Retry Failed Download
+        if path == "/api/download/retry":
+            task_id = body.get("taskId") or body.get("task_id")
+            suppress_thumb = bool(body.get("suppressThumbnail") or body.get("suppress_thumbnail"))
+            if not task_id:
+                self._send_error_json("Campo 'taskId' é obrigatório")
+                return
+            retried = manager.retry_task(task_id, suppress_thumb)
+            if retried:
+                self._send_json({"success": True, "task_id": task_id})
+            else:
+                self._send_error_json("Tarefa não encontrada para reexecução", 404)
             return
 
         # 3. API: Open Folder in Linux Desktop (xdg-open)
