@@ -167,6 +167,7 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
             else:
                 codec_clean = acodec.split(".")[0].upper()
 
+            format_note = f.get("format_note") or ""
             bitrate_label = f"{int(abr)} kbps" if abr else "Taxa dinâmica"
             size_label = format_bytes(filesize) if filesize else "Tamanho estimado N/A"
 
@@ -179,6 +180,7 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
                 "bitrate_label": bitrate_label,
                 "sample_rate": f"{asr} Hz" if asr else None,
                 "filesize": filesize,
+                "format_note": format_note,
                 "size_label": size_label,
                 "label": f"{codec_clean} ({ext.upper()}) - {bitrate_label} [{size_label}]",
                 "is_preferred": ("opus" in acodec.lower() or ext in ["m4a", "opus"]),
@@ -187,6 +189,8 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
         if is_video and height:
             video_resolutions.add(height)
             fps_label = f"{int(fps)}fps" if fps and fps > 30 else ""
+            vbr = f.get("vbr") or f.get("tbr")
+            format_note = f.get("format_note") or ""
             video_formats.append({
                 "format_id": fid,
                 "height": height,
@@ -194,7 +198,10 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
                 "vcodec": vcodec,
                 "acodec": acodec,
                 "fps": fps,
+                "vbr": round(vbr, 1) if vbr else None,
+                "format_note": format_note,
                 "filesize": filesize,
+                "filesize_approx": f.get("filesize_approx"),
                 "fps_label": fps_label,
             })
 
@@ -312,6 +319,74 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
     if not raw_filesize and audio_streams:
         raw_filesize = audio_streams[0].get("filesize")
 
+    # Compute originalAudio metadata
+    original_audio: Dict[str, Any]
+    if audio_streams:
+        best_audio = audio_streams[0]
+        a_bitrate = best_audio.get("bitrate")
+        a_filesize = best_audio.get("filesize") or raw_filesize
+        if (not a_bitrate or a_bitrate == 0) and a_filesize and duration and duration > 0:
+            a_bitrate = round((a_filesize * 8) / (duration * 1000), 1)
+
+        a_codec = best_audio.get("codec_name") or best_audio.get("acodec") or "Opus"
+        a_ext = best_audio.get("ext") or "opus"
+
+        if a_bitrate and a_bitrate > 0:
+            a_label = f"Fonte original ({a_codec} ~{int(a_bitrate)} kbps)"
+        elif a_ext:
+            a_label = f"Melhor qualidade da fonte (.{a_ext})"
+        else:
+            a_label = "Melhor disponível (Stream direto)"
+
+        original_audio = {
+            "ext": a_ext,
+            "bitrate": a_bitrate if a_bitrate and a_bitrate > 0 else None,
+            "codec": a_codec,
+            "abr": a_bitrate if a_bitrate and a_bitrate > 0 else None,
+            "format_note": best_audio.get("format_note", ""),
+            "filesize_approx": a_filesize,
+            "sample_rate": best_audio.get("sample_rate"),
+            "label": a_label,
+        }
+    else:
+        original_audio = {
+            "ext": "opus",
+            "bitrate": None,
+            "codec": "Opus",
+            "abr": None,
+            "format_note": "",
+            "filesize_approx": None,
+            "sample_rate": None,
+            "label": "Melhor disponível (Stream direto)",
+        }
+
+    # Compute originalVideo metadata
+    original_video: Optional[Dict[str, Any]] = None
+    if has_real_video and video_formats:
+        def video_sort_key(vf):
+            h = vf.get("height") or 0
+            f_fps = vf.get("fps") or 0
+            v_size = vf.get("filesize") or vf.get("filesize_approx") or 0
+            return (h, f_fps, v_size)
+
+        sorted_video = sorted(video_formats, key=video_sort_key, reverse=True)
+        best_video = sorted_video[0]
+        v_height = best_video.get("height") or max_height
+        v_fps = int(best_video.get("fps") or 30)
+        v_res = f"{v_height}p" if v_height else "1080p"
+        v_ext = best_video.get("ext") or "mp4"
+        v_vbr = best_video.get("vbr")
+        v_fsize = best_video.get("filesize") or best_video.get("filesize_approx")
+
+        original_video = {
+            "ext": v_ext,
+            "resolution": v_res,
+            "fps": v_fps,
+            "vbr": v_vbr,
+            "format_note": best_video.get("format_note", ""),
+            "filesize_approx": v_fsize,
+        }
+
     return {
         "success": True,
         "metadata": {
@@ -329,7 +404,11 @@ def parse_inspection_data(data: Dict[str, Any], original_url: str) -> Dict[str, 
             "is_music_track": is_music_track,
             "has_real_video": has_real_video,
             "has_video": has_real_video,
+            "originalAudio": original_audio,
+            "originalVideo": original_video,
         },
+        "originalAudio": original_audio,
+        "originalVideo": original_video,
         "audio_streams": audio_streams,
         "video_presets": available_presets,
         "subtitles": available_subs,

@@ -229,6 +229,24 @@ class TestVitrolaCore(unittest.TestCase):
         self.assertTrue(any(s["code"] == "pt" for s in subs))
         self.assertTrue(any(s["code"] == "en" for s in subs))
 
+        # Original Audio & Video metadata
+        self.assertIn("originalAudio", parsed)
+        self.assertIn("originalVideo", parsed)
+        self.assertIn("originalAudio", meta)
+        self.assertIn("originalVideo", meta)
+        self.assertEqual(parsed["originalAudio"]["codec"], "Opus")
+        self.assertEqual(parsed["originalAudio"]["ext"], "webm")
+        self.assertEqual(parsed["originalAudio"]["bitrate"], 160.0)
+        self.assertIn("Fonte original (Opus ~160 kbps)", parsed["originalAudio"]["label"])
+        self.assertIsNotNone(parsed["originalVideo"])
+        self.assertEqual(parsed["originalVideo"]["resolution"], "1080p")
+
+    def test_extract_info_alias(self):
+        from backend.downloader import extract_info
+        from backend.core.ytdlp_wrapper import inspect_url
+        self.assertIs(extract_info, inspect_url)
+
+
     def test_ffprobe_pure_opus_audio(self):
         """Generate test pure opus file and verify with ffprobe without re-encoding."""
         opus_path = self.test_dir / "test_pure_opus.opus"

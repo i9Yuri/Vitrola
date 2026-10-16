@@ -55,18 +55,31 @@ export class Sidebar {
     }
   }
 
-  setActiveView(view) {
+  syncSidebarIndicators(currentActiveId) {
     if (!this.container) return;
+    let normalized = (currentActiveId || "home").toString().toLowerCase();
+    if (normalized.includes("home")) normalized = "home";
+    else if (normalized.includes("history") || normalized.includes("library")) normalized = "history";
+    else if (normalized.includes("settings")) normalized = "settings";
+
     const navButtons = this.container.querySelectorAll("nav a, nav button");
     navButtons.forEach((b) => {
-      const isMatch = b.dataset.view === view;
+      const isMatch = b.dataset.view === normalized;
       b.classList.toggle("on", isMatch);
+      b.classList.toggle("active", isMatch);
       if (isMatch) {
         b.setAttribute("aria-current", "page");
       } else {
         b.removeAttribute("aria-current");
+        if (typeof b.blur === "function") {
+          b.blur();
+        }
       }
     });
+  }
+
+  setActiveView(view) {
+    this.syncSidebarIndicators(view);
   }
 
   updateTelemetry(data = {}) {

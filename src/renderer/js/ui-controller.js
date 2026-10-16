@@ -178,9 +178,9 @@ class UIController {
     this.cardStats = document.getElementById("card-stats");
     this.segBtns = document.querySelectorAll(".seg button");
     this.chipsAudioFmt = document.querySelectorAll(".chips-audio-fmt span");
-    this.chipsAudioQ = document.querySelectorAll(".chips-audio-q span");
+    this.chipsAudioQ = document.querySelectorAll(".chips-audio-q [data-bitrate]");
     this.chipsVideoFmt = document.querySelectorAll(".chips-video-fmt span");
-    this.chipsVideoRes = document.querySelectorAll(".chips-video-res span");
+    this.chipsVideoRes = document.querySelectorAll(".chips-video-res [data-res]");
     this.lblSizeA = document.getElementById("lbl-size");
     this.lblSizeV = document.getElementById("lbl-size-v");
     this.btnGo = document.getElementById("btn-go");
@@ -210,6 +210,22 @@ class UIController {
       this.searchForm.addEventListener("submit", (e) => {
         e.preventDefault();
         this.inspectCurrentUrl();
+      });
+    }
+
+    // Debounce no input de busca para URLs completas coladas ou digitadas (350ms)
+    if (this.inputUrl) {
+      let debounceTimer = null;
+      this.inputUrl.addEventListener("input", () => {
+        clearTimeout(debounceTimer);
+        const val = this.inputUrl.value.trim();
+        if (val.startsWith("http://") || val.startsWith("https://")) {
+          debounceTimer = setTimeout(() => {
+            if (this.inputUrl.value.trim() === val && val !== this.currentUrl) {
+              this.inspectCurrentUrl();
+            }
+          }, 350);
+        }
       });
     }
 
@@ -281,19 +297,30 @@ class UIController {
 
     // View all history link
     if (this.btnViewAllHistory) {
-      this.btnViewAllHistory.addEventListener("click", () => {
-        this.loadHistory();
-        this.openModal(this.modalLibrary);
+      this.btnViewAllHistory.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.navigateView("history");
       });
     }
 
-    // Modal close backdrops
+    // Modal close backdrops e botões de fechamento (X / .btn-close-modal)
     document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
       backdrop.addEventListener("click", (e) => {
-        if (e.target === backdrop || e.target.closest(".btn-close-modal")) {
-          this.closeModals();
+        if (e.target === backdrop || e.target.closest(".btn-close-modal") || e.target.closest(".x")) {
+          this.navigateView("home");
         }
       });
+    });
+
+    // Tecla Escape para fechamento global de modais e restauração determinística para Início
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" || e.key === "Esc") {
+        const hasOpenModal = document.querySelector(".modal-backdrop.active");
+        if (hasOpenModal) {
+          e.preventDefault();
+          this.navigateView("home");
+        }
+      }
     });
 
     // Settings yt-dlp triggers
@@ -305,16 +332,33 @@ class UIController {
     }
   }
 
-  handleViewChange(view) {
-    if (view === "settings") {
+  syncSidebarIndicators(currentActiveId) {
+    if (this.sidebar && typeof this.sidebar.syncSidebarIndicators === "function") {
+      this.sidebar.syncSidebarIndicators(currentActiveId);
+    }
+  }
+
+  navigateView(targetView, options = {}) {
+    const view = (targetView || "home").toString().toLowerCase();
+    if (view === "settings" || view === "modal-settings") {
+      if (this.modalLibrary) this.modalLibrary.classList.remove("active");
+      if (this.errorModal && typeof this.errorModal.close === "function") this.errorModal.close();
       this.openModal(this.modalSettings);
-    } else if (view === "history") {
+      this.syncSidebarIndicators("settings");
+    } else if (view === "history" || view === "modal-history" || view === "library") {
+      if (this.modalSettings) this.modalSettings.classList.remove("active");
+      if (this.errorModal && typeof this.errorModal.close === "function") this.errorModal.close();
       this.loadHistory();
       this.openModal(this.modalLibrary);
+      this.syncSidebarIndicators("history");
     } else {
       this.closeModals();
-      this.sidebar.setActiveView("home");
+      this.syncSidebarIndicators("home");
     }
+  }
+
+  handleViewChange(view) {
+    this.navigateView(view);
   }
 
   // --------------------------------------------------------------------------
@@ -569,12 +613,14 @@ class UIController {
       this.setMode(this.activeMode || "audio");
     }
 
-    // Sincroniza estado de qualidade original
+    // Sincroniza estado de qualidade original com metadados reais sondados
     const isOriginalAudio = this.audioFormat.toLowerCase() === "original";
-    this.mediaSearchCard.setOriginalMode("audio", isOriginalAudio);
+    const origAudio = data.originalAudio || meta.originalAudio;
+    this.mediaSearchCard.updateQualityBadgeDisplay(isOriginalAudio, origAudio);
 
     const isOriginalVideo = this.videoFormat.toLowerCase() === "original";
-    this.mediaSearchCard.setOriginalMode("video", isOriginalVideo);
+    const origVideo = data.originalVideo || meta.originalVideo;
+    this.mediaSearchCard.updateVideoQualityBadgeDisplay(isOriginalVideo, origVideo);
 
     this.recalcEstimatedSize();
   }
@@ -773,6 +819,22 @@ class UIController {
     const task = this.activeTasks.get(taskId);
     if (!task) return;
 
+    if (task.eventSource) {
+      try {
+        task.eventSource.close();
+      } catch (_) {}
+      task.eventSource = null;
+    }
+
+    const taskTitle = (data && data.title) || (task.metadata && task.metadata.title) || "mídia";
+
+    // Expurgar buffers e referências residuais de imagem e mídia
+    if (task.metadata) {
+      task.metadata.thumbnail_buffer = null;
+      task.metadata.raw_data = null;
+      task.metadata = null;
+    }
+
     this.activeTasks.delete(taskId);
     this.completedTasks.push(data);
 
@@ -797,7 +859,7 @@ class UIController {
       }
     }
 
-    this.showToast(`Download de "${task.metadata.title}" concluído!`, "success");
+    this.showToast(`Download de "${taskTitle}" concluído!`, "success");
     this.loadHistory();
     this.loadStorageTelemetry();
   }
@@ -1030,6 +1092,7 @@ class UIController {
 
   closeModals() {
     document.querySelectorAll(".modal-backdrop").forEach((m) => m.classList.remove("active"));
+    this.syncSidebarIndicators("home");
   }
 
   showToast(message, type = "success") {

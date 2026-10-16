@@ -21,6 +21,13 @@ export class MediaSearchCard {
     this.destEl = null;
     this.groupAudioQ = null;
     this.groupVideoRes = null;
+    this.audioOriginalBadge = null;
+    this.audioOrigText = null;
+    this.audioManualChips = null;
+    this.videoOriginalBadge = null;
+    this.videoOrigText = null;
+    this.videoManualChips = null;
+    this.currentData = null;
     this.state = "idle"; // idle | fetching-skeleton | metadata-ready | error
   }
 
@@ -36,6 +43,12 @@ export class MediaSearchCard {
     this.destEl = cardElement.querySelector("#dest-path");
     this.groupAudioQ = cardElement.querySelector("#group-audio-q");
     this.groupVideoRes = cardElement.querySelector("#group-video-res");
+    this.audioOriginalBadge = cardElement.querySelector("#audio-original-badge");
+    this.audioOrigText = cardElement.querySelector("#audio-orig-text");
+    this.audioManualChips = cardElement.querySelector("#audio-manual-chips");
+    this.videoOriginalBadge = cardElement.querySelector("#video-original-badge");
+    this.videoOrigText = cardElement.querySelector("#video-orig-text");
+    this.videoManualChips = cardElement.querySelector("#video-manual-chips");
   }
 
   applyState(state, data = null) {
@@ -53,6 +66,7 @@ export class MediaSearchCard {
   }
 
   renderData(data) {
+    this.currentData = data;
     const meta = data.metadata || data;
     if (!meta) return;
     if (this.titleEl) this.titleEl.textContent = meta.title || "";
@@ -66,6 +80,11 @@ export class MediaSearchCard {
       const dur = meta.duration_formatted || meta.duration_str || "";
       this.thumbEl.innerHTML = `<img src="${meta.thumbnail}" alt="Thumbnail" loading="lazy">${dur ? `<em id="card-dur">${dur}</em>` : ""}`;
     }
+
+    const origAudio = data.originalAudio || (meta && meta.originalAudio);
+    const origVideo = data.originalVideo || (meta && meta.originalVideo);
+    this.updateQualityBadgeDisplay(true, origAudio);
+    this.updateVideoQualityBadgeDisplay(true, origVideo);
   }
 
   setState(state) {
@@ -87,15 +106,57 @@ export class MediaSearchCard {
     }
   }
 
+  updateQualityBadgeDisplay(isOriginal, probedMeta = null) {
+    if (this.groupAudioQ) {
+      this.groupAudioQ.classList.toggle("chips-disabled", isOriginal);
+    }
+    if (this.audioOriginalBadge) {
+      this.audioOriginalBadge.style.display = isOriginal ? "inline-flex" : "none";
+    }
+    if (this.audioManualChips) {
+      this.audioManualChips.style.display = isOriginal ? "none" : "inline-flex";
+    }
+    if (isOriginal && this.audioOrigText) {
+      const meta = probedMeta || (this.currentData && (this.currentData.originalAudio || this.currentData.metadata?.originalAudio));
+      if (meta && meta.label) {
+        this.audioOrigText.textContent = meta.label;
+      } else if (meta && meta.codec && meta.bitrate) {
+        this.audioOrigText.textContent = `Fonte original (${meta.codec} ~${Math.round(meta.bitrate)} kbps)`;
+      } else if (meta && meta.ext) {
+        this.audioOrigText.textContent = `Melhor qualidade da fonte (.${meta.ext})`;
+      } else {
+        this.audioOrigText.textContent = "Melhor disponível (Stream direto)";
+      }
+    }
+  }
+
+  updateVideoQualityBadgeDisplay(isOriginal, probedMeta = null) {
+    if (this.groupVideoRes) {
+      this.groupVideoRes.classList.toggle("chips-disabled", isOriginal);
+    }
+    if (this.videoOriginalBadge) {
+      this.videoOriginalBadge.style.display = isOriginal ? "inline-flex" : "none";
+    }
+    if (this.videoManualChips) {
+      this.videoManualChips.style.display = isOriginal ? "none" : "inline-flex";
+    }
+    if (isOriginal && this.videoOrigText) {
+      const meta = probedMeta || (this.currentData && (this.currentData.originalVideo || this.currentData.metadata?.originalVideo));
+      if (meta && meta.resolution) {
+        const fpsStr = meta.fps && meta.fps > 30 ? ` ${meta.fps}fps` : "";
+        const vbrStr = meta.vbr ? ` (~${Math.round(meta.vbr)} kbps)` : "";
+        this.videoOrigText.textContent = `Fonte original (${meta.resolution}${fpsStr}${vbrStr})`;
+      } else {
+        this.videoOrigText.textContent = "Melhor resolução nativa (Stream direto)";
+      }
+    }
+  }
+
   setOriginalMode(mode, isOriginal) {
     if (mode === "audio") {
-      if (this.groupAudioQ) {
-        this.groupAudioQ.classList.toggle("chips-disabled", isOriginal);
-      }
+      this.updateQualityBadgeDisplay(isOriginal);
     } else {
-      if (this.groupVideoRes) {
-        this.groupVideoRes.classList.toggle("chips-disabled", isOriginal);
-      }
+      this.updateVideoQualityBadgeDisplay(isOriginal);
     }
   }
 

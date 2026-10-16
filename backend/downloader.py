@@ -14,8 +14,13 @@ from .core.ytdlp_wrapper import (
     clean_media_title,
     purge_partial_download_artifacts,
     purge_orphan_thumbnails,
+    inspect_url,
 )
 from .core.system import get_download_directory, open_in_file_manager
+
+# Alias formal para conformidade com a interface de extração
+extract_info = inspect_url
+
 
 def extract_video_id_from_url(url: str) -> Optional[str]:
     if not url:

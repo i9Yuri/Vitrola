@@ -239,6 +239,8 @@ nav button:hover {
 
 nav a.on,
 nav button.on,
+nav a.active,
+nav button.active,
 nav button[aria-current="page"] {
   background: color-mix(in srgb, var(--acc, var(--accent)) 14%, transparent);
   color: var(--acc, var(--accent));
@@ -566,9 +568,12 @@ kbd {
 }
 
 .chips.chips-disabled {
-  opacity: 0.38;
-  pointer-events: none;
+  opacity: 0.72;
   user-select: none;
+}
+
+.chips.chips-disabled .manual-chips-wrap {
+  pointer-events: none;
 }
 
 /* Cartão de Resultado com Mockup de Vinil e Capa (.result) */
@@ -789,6 +794,45 @@ kbd {
   border-color: var(--acc, var(--accent));
   color: var(--acc, var(--accent));
   background: color-mix(in srgb, var(--acc, var(--accent)) 12%, transparent);
+}
+
+.original-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge-orig-text {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--tx, var(--text));
+  padding: 5px 12px;
+  background: var(--s2, var(--raised));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  letter-spacing: 0.1px;
+}
+
+.badge-no-reencode {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--acc, var(--accent)) 16%, transparent);
+  color: var(--acc, var(--accent));
+  border: 1px solid color-mix(in srgb, var(--acc, var(--accent)) 30%, transparent);
+}
+
+.manual-chips-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .act {

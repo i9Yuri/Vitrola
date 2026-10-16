@@ -200,9 +200,15 @@
               </div>
               <div class="chips a chips-audio-q chips-disabled" id="group-audio-q">
                 <label>Qualidade</label>
-                <span class="on" data-bitrate="320">320 kbps</span>
-                <span data-bitrate="256">256 kbps</span>
-                <span data-bitrate="128">128 kbps</span>
+                <div class="original-badge-wrap" id="audio-original-badge">
+                  <span class="badge-orig-text" id="audio-orig-text">Melhor disponível (Stream direto)</span>
+                  <span class="badge-no-reencode">Sem recompressão</span>
+                </div>
+                <div class="manual-chips-wrap" id="audio-manual-chips" style="display: none;">
+                  <span class="on" data-bitrate="320">320 kbps</span>
+                  <span data-bitrate="256">256 kbps</span>
+                  <span data-bitrate="128">128 kbps</span>
+                </div>
               </div>
               <!-- Chips Vídeo -->
               <div class="chips v chips-video-fmt">
@@ -214,10 +220,16 @@
               </div>
               <div class="chips v chips-video-res chips-disabled" id="group-video-res">
                 <label>Resolução</label>
-                <span class="on" data-res="1080p">1080p</span>
-                <span data-res="720p">720p</span>
-                <span data-res="480p">480p</span>
-                <span data-res="360p">360p</span>
+                <div class="original-badge-wrap" id="video-original-badge">
+                  <span class="badge-orig-text" id="video-orig-text">Melhor disponível (Stream direto)</span>
+                  <span class="badge-no-reencode">Sem recompressão</span>
+                </div>
+                <div class="manual-chips-wrap" id="video-manual-chips" style="display: none;">
+                  <span class="on" data-res="1080p">1080p</span>
+                  <span data-res="720p">720p</span>
+                  <span data-res="480p">480p</span>
+                  <span data-res="360p">360p</span>
+                </div>
               </div>
               <!-- Ações e Destino Passivo -->
               <div class="act">
