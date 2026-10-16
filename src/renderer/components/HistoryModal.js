@@ -1,7 +1,7 @@
 /**
  * VITROLA - COMPONENTE DE HISTÓRICO (HistoryModal.js)
  * Deduplicação de registros, agregação de contagem, sanitização de strings ambíguas ("NA"),
- * exclusão granular e expurgo total de registros.
+ * exclusão granular reativa, animação suave de recolhimento e expurgo total via modal customizado.
  */
 
 import { checkAndShowItem } from "../../main/ipc/filesystem-handler.js";
@@ -11,6 +11,7 @@ import {
   deleteHistoryItem,
   clearAllHistory,
 } from "../../main/ipc/history-handler.js";
+import { showCustomConfirmDialog } from "./ConfirmModal.js";
 
 function formatTimestamp(timestampStr) {
   if (!timestampStr) {
@@ -41,24 +42,44 @@ export class HistoryModal {
 
   _bindFooterEvents() {
     if (this.btnClearHistory) {
-      this.btnClearHistory.addEventListener("click", async () => {
-        const confirmed = window.confirm(
-          "Tem certeza que deseja apagar todo o histórico de downloads? Os arquivos no disco permanecerão intactos."
-        );
-        if (!confirmed) return;
+      this.btnClearHistory.addEventListener("click", () => this.handleClearHistory());
+    }
+  }
 
-        try {
-          const res = await clearAllHistory();
-          if (res.success) {
-            this.onToast("Histórico de downloads completamente limpo.", "success");
-            this.onReload();
-          } else {
-            this.onToast(res.error || "Falha ao limpar o histórico.", "error");
-          }
-        } catch (err) {
-          this.onToast(`Erro ao limpar histórico: ${err.message}`, "error");
+  async handleClearHistory() {
+    const confirmed = await showCustomConfirmDialog({
+      title: "Limpar Histórico",
+      message: "Tem certeza que deseja apagar todo o histórico de downloads? Os arquivos no disco permanecerão intactos.",
+      confirmLabel: "Apagar histórico",
+      cancelLabel: "Cancelar",
+      isDestructive: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      const res = await clearAllHistory();
+      if (res && res.success) {
+        if (this.listContainer) {
+          this.listContainer.innerHTML = `<p class="q-empty" style="color:var(--mut);text-align:center;padding:24px;">Nenhum download registrado no histórico.</p>`;
         }
-      });
+        this.updateHistoryFooterCount(0);
+        this.onToast("Histórico de downloads completamente limpo.", "success");
+        this.onReload();
+      } else {
+        this.onToast((res && res.error) || "Falha ao limpar o histórico.", "error");
+      }
+    } catch (err) {
+      this.onToast(`Erro ao limpar histórico: ${err.message}`, "error");
+    }
+  }
+
+  updateHistoryFooterCount(count) {
+    if (this.totalCountEl) {
+      this.totalCountEl.textContent = `${count} ${count === 1 ? "item" : "itens"}`;
+    }
+    if (this.btnClearHistory) {
+      this.btnClearHistory.disabled = count === 0;
+      this.btnClearHistory.style.opacity = count === 0 ? "0.4" : "1";
     }
   }
 
@@ -74,19 +95,10 @@ export class HistoryModal {
     if (!this.listContainer) return;
 
     const items = aggregateHistory(rawItems);
-
-    if (this.totalCountEl) {
-      const count = items.length;
-      this.totalCountEl.textContent = `${count} ${count === 1 ? "item" : "itens"}`;
-    }
-
-    if (this.btnClearHistory) {
-      this.btnClearHistory.disabled = items.length === 0;
-      this.btnClearHistory.style.opacity = items.length === 0 ? "0.4" : "1";
-    }
+    this.updateHistoryFooterCount(items.length);
 
     if (!items || items.length === 0) {
-      this.listContainer.innerHTML = `<p class="q-empty">Nenhum download registrado no histórico.</p>`;
+      this.listContainer.innerHTML = `<p class="q-empty" style="color:var(--mut);text-align:center;padding:24px;">Nenhum download registrado no histórico.</p>`;
       return;
     }
 
@@ -105,7 +117,7 @@ export class HistoryModal {
         const displayFilename = sanitizeMetadataString(item.filename, displayTitle);
 
         return `
-          <div class="dl done" style="background:var(--surface);margin-bottom:8px;border:1px solid var(--line);border-radius:12px;padding:10px 14px">
+          <div class="dl done" data-item-id="${item.mediaKey}" style="background:var(--surface);margin-bottom:8px;border:1px solid var(--line);border-radius:12px;padding:10px 14px;transition:all 0.25s ease;">
             <div class="dl-body">
               <div class="dl-top" style="align-items:center">
                 <span class="dl-title" title="${displayTitle}">${displayTitle}</span>
@@ -131,7 +143,9 @@ export class HistoryModal {
 
     // Verificação e abertura no gerenciador de arquivos
     this.listContainer.querySelectorAll(".btn-check-open-file").forEach((btn) => {
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
         const path = btn.dataset.filepath;
         if (!path) {
           this.onToast("Caminho do arquivo não registrado.", "warning");
@@ -150,25 +164,46 @@ export class HistoryModal {
       });
     });
 
-    // Exclusão individual de item do histórico
+    // Exclusão individual de item do histórico com recolhimento animado
     this.listContainer.querySelectorAll(".btn-delete-history-item").forEach((btn) => {
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
         const key = btn.dataset.mediakey;
-        const title = btn.dataset.title;
-        if (!key) return;
-
-        try {
-          const res = await deleteHistoryItem(key);
-          if (res.success) {
-            this.onToast(`"${title}" removido do histórico.`, "success");
-            this.onReload();
-          } else {
-            this.onToast(res.error || "Falha ao remover item do histórico.", "error");
-          }
-        } catch (err) {
-          this.onToast(`Erro ao remover: ${err.message}`, "error");
-        }
+        const title = btn.dataset.title || "Item";
+        const cardEl = btn.closest(".dl");
+        this.handleDeleteHistoryItem(key, cardEl, title);
       });
     });
+  }
+
+  async handleDeleteHistoryItem(key, cardEl, title) {
+    if (!key) return;
+
+    try {
+      const res = await deleteHistoryItem(key);
+      if (res && res.success) {
+        if (cardEl) {
+          cardEl.classList.add("history-item-collapsing");
+          setTimeout(() => {
+            if (cardEl.parentNode) {
+              cardEl.remove();
+            }
+            const remainingCards = this.listContainer ? this.listContainer.querySelectorAll(".dl").length : 0;
+            this.updateHistoryFooterCount(remainingCards);
+            if (remainingCards === 0 && this.listContainer) {
+              this.listContainer.innerHTML = `<p class="q-empty" style="color:var(--mut);text-align:center;padding:24px;">Nenhum download registrado no histórico.</p>`;
+            }
+          }, 260);
+        } else {
+          this.onReload();
+        }
+        this.onToast(`"${title}" removido do histórico.`, "success");
+      } else {
+        this.onToast((res && res.error) || "Falha ao remover item do histórico.", "error");
+      }
+    } catch (err) {
+      this.onToast(`Erro ao remover: ${err.message}`, "error");
+    }
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "vitrola",
   "productName": "Vitrola",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "Baixador de mídia de alta performance (Áudio e Vídeo) para desktop integrado ao yt-dlp e FFmpeg",
   "main": "src/main/main.js",
   "scripts": {

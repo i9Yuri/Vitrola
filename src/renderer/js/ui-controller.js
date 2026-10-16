@@ -119,7 +119,7 @@ class UIController {
     // StatusBar
     this.statusBar = new StatusBar();
     this.statusBar.mount(document.getElementById("status-bar"));
-    this.statusBar.setVersion("Vitrola v2.3.0");
+    this.statusBar.setVersion("Vitrola v2.6.1");
 
     // Sidebar
     this.sidebar = new Sidebar({

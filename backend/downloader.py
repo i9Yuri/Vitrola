@@ -29,6 +29,9 @@ def extract_video_id_from_url(url: str) -> Optional[str]:
     return m.group(1) if m else None
 
 def get_history_file() -> Path:
+    local_hist = Path.cwd() / "config" / "history.json"
+    if local_hist.exists():
+        return local_hist
     user_hist = Path(os.path.expanduser("~/.config/vitrola/history.json"))
     if user_hist.exists():
         return user_hist
@@ -43,7 +46,6 @@ def get_history_file() -> Path:
             except Exception as e:
                 print(f"[Downloader] Aviso ao migrar histórico legado: {e}")
                 return legacy_user_hist
-    local_hist = Path.cwd() / "config" / "history.json"
     if local_hist.parent.exists():
         return local_hist
     return user_hist
@@ -175,13 +177,29 @@ class DownloadManager:
                 print(f"[History] Failed to load history: {e}")
         return []
 
-    def _save_history(self):
-        try:
-            HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-            with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.history[:50], f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"[History] Failed to save history: {e}")
+    def _save_history(self) -> bool:
+        """Gravação atômica via arquivo temporário com retry de 100ms e contingência contra I/O locks."""
+        target_file = get_history_file()
+        for attempt in range(2):
+            try:
+                target_file.parent.mkdir(parents=True, exist_ok=True)
+                temp_file = target_file.with_name(f"{target_file.name}.tmp.{os.getpid()}")
+                with open(temp_file, "w", encoding="utf-8") as f:
+                    json.dump(self.history[:50], f, indent=2, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+                temp_file.replace(target_file)
+                return True
+            except (OSError, IOError) as e:
+                local_hist = Path.cwd() / "config" / "history.json"
+                if target_file != local_hist and local_hist.parent.exists():
+                    target_file = local_hist
+                if attempt == 0:
+                    time.sleep(0.1)  # Tentativa de reescrita após 100ms
+                else:
+                    print(f"[History] Falha ao salvar histórico após retry: {e}")
+                    return False
+        return False
 
     def create_task(self, url: str, options: Dict[str, Any]) -> DownloadTask:
         task_id = str(uuid.uuid4())[:8]
@@ -252,16 +270,14 @@ class DownloadManager:
                 and str(h.get("task_id", "")).strip().lower() != target
             ]
             if len(self.history) < initial_count:
-                self._save_history()
-                return True
+                return self._save_history()
             return False
 
     def clear_history(self) -> bool:
         """Clears all records from history storage."""
         with self._lock:
             self.history = []
-            self._save_history()
-            return True
+            return self._save_history()
 
     def cancel_all_active_tasks(self):
         """Cleanly terminates any running yt-dlp/ffmpeg processes to avoid zombie subprocesses or shutdown crashes."""

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Vitrola - Standalone AppImage Builder
-# Generates a self-contained executable in dist/Vitrola-2.6.0.AppImage using electron-builder
+# Generates a self-contained executable in dist/Vitrola-2.6.1.AppImage using electron-builder
 # ==============================================================================
 
 set -e

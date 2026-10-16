@@ -578,15 +578,42 @@ function registerIpcHandlers() {
   // Registra handlers do subsistema de download (retry & error details)
   registerDownloadHandlers(ipcMain);
 
-  // History operations fallback
+  // History operations dispatched to backend
   ipcMain.handle('history:getAggregated', async () => {
-    return [];
+    try {
+      const res = await fetch(`http://${backendHost}:${backendPort}/api/history`);
+      const data = await res.json();
+      return data.history || [];
+    } catch (e) {
+      console.error('[IPC history:getAggregated] Erro ao obter histórico:', e.message);
+      return [];
+    }
   });
   ipcMain.handle('history:deleteItem', async (event, mediaKey) => {
-    return { success: true, mediaKey };
+    try {
+      const res = await fetch(`http://${backendHost}:${backendPort}/api/history/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ media_key: mediaKey })
+      });
+      return await res.json();
+    } catch (e) {
+      console.error('[IPC history:deleteItem] Erro ao deletar item:', e.message);
+      return { success: false, error: e.message };
+    }
   });
   ipcMain.handle('history:clearAll', async () => {
-    return { success: true };
+    try {
+      const res = await fetch(`http://${backendHost}:${backendPort}/api/history/clear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear' })
+      });
+      return await res.json();
+    } catch (e) {
+      console.error('[IPC history:clearAll] Erro ao limpar histórico:', e.message);
+      return { success: false, error: e.message };
+    }
   });
 }
 

@@ -266,12 +266,14 @@ class VitrolaHandler(BaseHTTPRequestHandler):
                 self._send_error_json("Campo 'media_key' é obrigatório para exclusão")
                 return
             success = manager.delete_history_item(str(media_key))
-            self._send_json({"success": success, "history": manager.get_history()})
+            remaining = manager.get_history()
+            self._send_json({"success": success, "remainingCount": len(remaining), "history": remaining})
             return
 
         if path == "/api/history/clear" or (path == "/api/history" and body.get("action") == "clear"):
+            initial_count = len(manager.get_history())
             success = manager.clear_history()
-            self._send_json({"success": success, "history": []})
+            self._send_json({"success": success, "clearedCount": initial_count if success else 0, "history": []})
             return
 
         # 4. API: Update Configuration
@@ -302,13 +304,15 @@ class VitrolaHandler(BaseHTTPRequestHandler):
         path = parsed.path
 
         if path == "/api/history":
+            initial_count = len(manager.get_history())
             success = manager.clear_history()
-            self._send_json({"success": success, "history": []})
+            self._send_json({"success": success, "clearedCount": initial_count if success else 0, "history": []})
             return
         elif path.startswith("/api/history/"):
             media_key = unquote(path.split("/api/history/", 1)[1])
             success = manager.delete_history_item(media_key)
-            self._send_json({"success": success, "history": manager.get_history()})
+            remaining = manager.get_history()
+            self._send_json({"success": success, "remainingCount": len(remaining), "history": remaining})
             return
 
         self._send_error_json("Endpoint DELETE não encontrado", 404)

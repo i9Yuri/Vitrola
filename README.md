@@ -1,6 +1,6 @@
 # Vitrola
 
-[![Version](https://img.shields.io/badge/version-2.6.0-amber.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-2.6.1-amber.svg)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20x64%20%7C%20Cross--Platform-emerald.svg)](https://github.com/i9Yuri/Vitrola)
 [![Engine](https://img.shields.io/badge/engine-yt--dlp%20%7C%20FFmpeg-cyan.svg)](https://github.com/yt-dlp/yt-dlp)
@@ -40,6 +40,9 @@ Repositório Oficial Canônico: [https://github.com/i9Yuri/Vitrola](https://gith
 
 ### 5. Histórico Agregado e Diagnóstico de Falhas
 - **Deduplicação Inteligente**: Agrupamento automático de downloads idênticos por chave de mídia (`mediaKey`) com indicador visual multiplicador (ex.: `2x`, `4x`).
+- **Modal de Confirmação Dark-Theme**: Eliminação definitiva de caixas de diálogo nativas e bloqueantes do sistema (`window.confirm`), substituídas por um diálogo assíncrono baseado em `Promise<boolean>` integrado ao design system.
+- **Persistência Atômica com Salvaguarda de I/O**: Exclusão e expurgo com gravação atômica (`fsync` + rename temporário) e contingência com retry contra locks de sistema de arquivos.
+- **Exclusão Reativa de Itens**: Desaparecimento imediato com transição de recolhimento suave, atualização em tempo real do contador de rodapé e transição automática para o estado de histórico vazio sem deleção dos arquivos reais no disco.
 - **Validação de Disco**: Verificação de integridade no sistema de arquivos antes de abrir o gerenciador (Dolphin / Nautilus), notificando o usuário caso o arquivo tenha sido movido ou excluído.
 - **Modal de Diagnóstico e Retentativa**: Botão informacional de erro `[i]` com modal técnico detalhado, sugestão de ação corretiva, cópia de logs brutos e botão de ação direta "Tentar novamente".
 

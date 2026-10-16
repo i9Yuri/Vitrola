@@ -4,6 +4,23 @@ Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.6.1] - 2026-10-16
+
+### Added
+- **Modal Customizado de Confirmação Dark-Theme (`ConfirmModal.js`)**: Substituição definitiva de diálogos nativos bloqueantes do sistema operacional (`window.confirm`) por um modal assíncrono baseado em `Promise<boolean>`, integrado organicamente ao design system da aplicação, com backdrop translúcido com desfoque (`backdrop-filter: blur(4px)`), foco inicial defensivo no botão Cancelar (prevenindo acionamento involuntário por tecla Enter) e suporte ao fechamento via `Escape` ou clique externo.
+
+### Fixed
+- **Despacho e Persistência Atômica do Histórico de Downloads**:
+  - Correção dos canais IPC Electron (`history:deleteItem`, `history:clearAll`, `history:getAggregated`) no processo principal, substituindo stubs vazios por requisições HTTP reais encaminhadas ao serviço backend Python local.
+  - Gravação atômica em `config/history.json` através de arquivo temporário (`.tmp.{pid}`), `flush()` e `os.fsync()`, com mecanismo de contingência e retry automático de 100ms em caso de bloqueios transitórios de I/O no sistema de arquivos.
+  - Suporte bidirecional e robusto a rotas `DELETE /api/history/{id}` e `DELETE /api/history` com fallback defensivo para rotas `POST /api/history/delete` e `POST /api/history/clear`.
+- **Exclusão Reativa de Itens e Atualização em Tempo Real**:
+  - Animação de recolhimento suave (`history-item-collapsing`: transição de opacidade, escala e altura máxima) ao remover itens individuais do histórico.
+  - Atualização dinâmica e reativa do contador de rodapé (`"X itens"`) e transição imediata para o placeholder de lista vazia quando o total de itens atinge zero.
+  - Desativação automática com opacidade reduzida do botão "Limpar histórico" quando a lista está vazia.
+  - Preservação estrita dos arquivos físicos de mídia baixados no disco durante qualquer operação de histórico.
+- **Sincronização Visual de Versão na Interface**: Atualização dos indicadores de versão na barra de status inferior e no painel "Sobre o Vitrola" para `v2.6.1`.
+
 ## [2.6.0] - 2026-10-16
 
 ### Added

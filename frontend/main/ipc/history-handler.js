@@ -91,12 +91,18 @@ export async function deleteHistoryItem(mediaKey) {
     return await window.electronAPI.deleteHistoryItem(mediaKey);
   }
   try {
-    const res = await fetch("/api/history/delete", {
+    const res = await fetch(`/api/history/${encodeURIComponent(mediaKey)}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+    const postRes = await fetch("/api/history/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ media_key: mediaKey }),
     });
-    return await res.json();
+    return await postRes.json();
   } catch (err) {
     return { success: false, error: err.message };
   }
@@ -107,12 +113,18 @@ export async function clearAllHistory() {
     return await window.electronAPI.clearAllHistory();
   }
   try {
-    const res = await fetch("/api/history/clear", {
+    const res = await fetch("/api/history", {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+    const postRes = await fetch("/api/history/clear", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "clear" }),
     });
-    return await res.json();
+    return await postRes.json();
   } catch (err) {
     return { success: false, error: err.message };
   }

@@ -265,7 +265,7 @@
     <!-- Barra de Status Inferior (32px) -->
     <footer class="foot" id="status-bar">
       <span id="status-engine"><i id="status-engine-dot"></i><span id="status-engine-text">yt-dlp e ffmpeg prontos</span></span>
-      <span id="status-version">Vitrola v2.3.0</span>
+      <span id="status-version">Vitrola v2.6.1</span>
     </footer>
 
     <!-- Modal de Ajustes & Armazenamento -->
@@ -352,7 +352,7 @@
           <div class="setting-group">
             <label>Sobre o Vitrola</label>
             <div class="about-app-box" style="padding: 12px 14px; background: var(--s1); border-radius: 12px; border: 1px solid var(--line); font-size: 13px; line-height: 1.5; color: var(--mut)">
-              <div style="font-weight: 600; color: var(--tx); margin-bottom: 4px;">Vitrola v2.3.0</div>
+              <div style="font-weight: 600; color: var(--tx); margin-bottom: 4px;">Vitrola v2.6.1</div>
               <div>Baixador de mídia de alta performance (Áudio e Vídeo) integrado ao yt-dlp e FFmpeg.</div>
               <div style="margin-top: 8px;">
                 <a href="https://github.com/i9Yuri/Vitrola" target="_blank" rel="noreferrer" style="color: var(--acc); text-decoration: none; font-weight: 550;">github.com/i9Yuri/Vitrola</a>
@@ -418,6 +418,32 @@
           </button>
           <button type="button" id="btn-error-retry" class="btn main" style="height: 34px; font-size: 12.5px; padding: 0 16px; display: flex; align-items: center; gap: 6px;">
             <svg class="i"><use href="#retry"/></svg>Tentar Novamente
+          </button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Modal Customizado de Confirmação -->
+    <div id="modal-confirm" class="modal-backdrop modal-confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-hidden="true">
+      <div class="modal-sheet confirm-sheet" style="max-width: 440px; display: flex; flex-direction: column;">
+        <header class="modal-header">
+          <h3 id="confirm-title" style="display: flex; align-items: center; gap: 8px;">
+            <svg class="i" style="color: #ef4444;"><use href="#trash"/></svg>
+            Confirmar Ação
+          </h3>
+          <button id="btn-confirm-close" class="x btn-close-modal" aria-label="Fechar confirmação"><svg class="i"><use href="#x"/></svg></button>
+        </header>
+        <div class="modal-content" style="padding: 16px;">
+          <p id="confirm-message" style="font-size: 13.5px; line-height: 1.5; color: var(--tx); margin: 0;">
+            Tem certeza que deseja apagar todo o histórico de downloads? Os arquivos no disco permanecerão intactos.
+          </p>
+        </div>
+        <footer class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line);">
+          <button type="button" id="btn-confirm-cancel" class="btn secondary" style="height: 34px; font-size: 12.5px; padding: 0 16px;">
+            Cancelar
+          </button>
+          <button type="button" id="btn-confirm-accept" class="btn btn-destructive" style="height: 34px; font-size: 12.5px; padding: 0 16px;">
+            Apagar histórico
           </button>
         </footer>
       </div>
