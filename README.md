@@ -1,11 +1,14 @@
 # Vitrola
 
 [![Version](https://img.shields.io/badge/version-2.6.1-amber.svg)](package.json)
+[![Release](https://img.shields.io/badge/release-v2.6.1-blue.svg)](https://github.com/i9Yuri/Vitrola/releases/latest)
+[![Download AppImage](https://img.shields.io/badge/download-AppImage-purple.svg)](https://github.com/i9Yuri/Vitrola/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20x64%20%7C%20Cross--Platform-emerald.svg)](https://github.com/i9Yuri/Vitrola)
 [![Engine](https://img.shields.io/badge/engine-yt--dlp%20%7C%20FFmpeg-cyan.svg)](https://github.com/yt-dlp/yt-dlp)
 
-> Baixador de mídia de alta performance (áudio e vídeo) para desktop integrado de forma nativa ao **yt-dlp** e **FFmpeg**.
+> Baixador de mídia de alta performance (áudio e vídeo) para desktop integrado de forma nativa ao **yt-dlp** e **FFmpeg**.  
+> **Download da Última Versão Estável:** [Vitrola v2.6.1 (AppImage)](https://github.com/i9Yuri/Vitrola/releases/latest)
 
 Repositório Oficial Canônico: [https://github.com/i9Yuri/Vitrola](https://github.com/i9Yuri/Vitrola)
 
@@ -141,16 +144,16 @@ dist/Vitrola-2.6.0.AppImage
 
 ### 2. Atribuir Permissão de Execução
 ```bash
-chmod +x dist/Vitrola-2.6.0.AppImage
+chmod +x dist/Vitrola-2.6.1.AppImage
 ```
 
 ### 3. Executar o Aplicativo
 ```bash
 # Execução direta com FUSE ativo:
-./dist/Vitrola-2.6.0.AppImage
+./dist/Vitrola-2.6.1.AppImage
 
 # Execução em sistemas sem suporte a FUSE / libfuse2:
-./dist/Vitrola-2.6.0.AppImage --appimage-extract-and-run
+./dist/Vitrola-2.6.1.AppImage --appimage-extract-and-run
 ```
 
 ### 4. Empacotar Diretório para Inspeção / Teste
