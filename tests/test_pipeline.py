@@ -369,6 +369,41 @@ class TestVitrolaCore(unittest.TestCase):
         mgr.cancel_all_active_tasks()
         self.assertFalse(mgr.is_download_active())
 
+    def test_purge_partial_download_artifacts(self):
+        from backend.core.ytdlp_wrapper import purge_partial_download_artifacts
+
+        # Create mock partial files
+        part1 = self.test_dir / "VENERE VAI VENUS - Anjos.opus.part"
+        part2 = self.test_dir / "VENERE VAI VENUS - Anjos.ytdl"
+        part3 = self.test_dir / "Other Song.mp3.part"
+        final_file = self.test_dir / "VENERE VAI VENUS - Anjos.opus"
+
+        part1.touch()
+        part2.touch()
+        part3.touch()
+        final_file.touch()
+
+        # Purge only artifacts matching the media title
+        purge_partial_download_artifacts(self.test_dir, "VENERE VAI VENUS - Anjos")
+
+        self.assertFalse(part1.exists(), ".part file should have been deleted")
+        self.assertFalse(part2.exists(), ".ytdl file should have been deleted")
+        self.assertTrue(part3.exists(), "Unrelated partial file should not have been touched")
+        self.assertTrue(final_file.exists(), "Completed media file must not be deleted")
+
+    def test_no_continue_flags_in_download_command(self):
+        cmd = build_download_command(
+            url="https://youtube.com/watch?v=mock123",
+            mode="audio",
+            output_dir=self.test_dir,
+            is_original_quality=True,
+        )
+        self.assertIn("--no-continue", cmd)
+        self.assertIn("--concurrent-fragments", cmd)
+        self.assertIn("1", cmd)
+        self.assertIn("--no-part", cmd)
+        self.assertNotIn("--http-chunk-size", " ".join(cmd))
+
     def test_electron_bootstrap_and_asset_integrity(self):
         root = Path(__file__).resolve().parent.parent
         main_js = root / "src" / "main" / "main.js"

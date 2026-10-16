@@ -15,6 +15,7 @@ import { MediaSearchCard } from "../components/MediaSearchCard.js";
 import { SettingsModal } from "../components/SettingsModal.js";
 import { VinylDisc } from "../components/VinylDisc.js";
 import { ErrorModal } from "../components/ErrorModal.js";
+import { RecentDownloads } from "../components/RecentDownloads.js";
 
 class UIController {
   constructor() {
@@ -96,6 +97,14 @@ class UIController {
       onToast: (msg, type) => this.showToast(msg, type),
     });
     this.errorModal.mount();
+
+    // Gerenciador com Delegação de Cliques em Downloads Recentes
+    this.recentDownloads = new RecentDownloads({
+      onInfo: (taskId) => this.openErrorDetails(taskId),
+      onRetry: (taskId) => this.retryTask(taskId),
+      onCancel: (taskId) => this.cancelTask(taskId),
+    });
+    this.recentDownloads.mount(document.getElementById("recent-downloads-list"));
   }
 
   cacheDom() {
@@ -800,17 +809,31 @@ class UIController {
       } catch (_) {}
     }
 
+    const task = this.activeTasks.get(taskId);
+    const mediaTitle = task?.title || details?.mediaTitle || "Mídia Desconhecida";
+
     if (!details) {
       details = {
         taskId,
-        summary: "Ocorreu uma falha durante o processamento da mídia.",
-        rawErrorLog: "Nenhum detalhe técnico adicional arquivado.",
-        suggestedAction: "Clique em 'Tentar novamente' para reiniciar.",
+        mediaTitle,
+        message: "Ocorreu uma falha durante o processamento da mídia.",
+        rawLog: "Nenhum detalhe técnico adicional arquivado.",
+        suggestedAction: "Clique em 'Tentar Novamente' para reiniciar a extração.",
+        timestamp: new Date().toISOString(),
         isThumbnailError: false
       };
+    } else {
+      details.taskId = taskId;
+      details.mediaTitle = details.mediaTitle || mediaTitle;
+      details.message = details.message || details.summary || "Falha no download da mídia.";
+      details.rawLog = details.rawLog || details.rawErrorLog || details.raw_log || "";
+      details.timestamp = details.timestamp || new Date().toISOString();
+      if (!details.httpStatus && (details.rawLog.includes("416") || details.message.includes("416"))) {
+        details.httpStatus = 416;
+      }
     }
 
-    this.errorModal.open(details, (tid) => this.retryTask(tid));
+    this.errorModal.openErrorModal(details, (tid) => this.retryTask(tid));
   }
 
   async retryTask(taskId) {

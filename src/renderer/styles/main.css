@@ -326,10 +326,11 @@ main, .main {
   height: 320px;
   border-radius: 50%;
   pointer-events: auto !important;
-  z-index: 10 !important;
+  z-index: 5 !important;
 }
 
-.disc:after {
+.disc:after,
+.vinyl:after {
   content: "";
   position: absolute;
   inset: 0;
@@ -396,7 +397,7 @@ main, .main {
 /* Cabeçalho Hero */
 .hero {
   position: relative;
-  z-index: 1;
+  z-index: 25;
   max-width: 580px;
 }
 
@@ -416,7 +417,7 @@ main, .main {
 /* Barra de Busca Flutuante em Pílula (.search) */
 .search {
   position: relative;
-  z-index: 1;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -427,6 +428,7 @@ main, .main {
   border: 1.5px solid var(--line);
   box-shadow: 0 18px 50px -24px #000;
   transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: default;
 }
 
 .search:focus-within {
@@ -449,6 +451,12 @@ main, .main {
   font-size: 15px;
   font-weight: 500;
   color: var(--tx, var(--text));
+  cursor: text;
+}
+
+.search .btn,
+.search button {
+  cursor: pointer;
 }
 
 .search input::placeholder {
@@ -1049,9 +1057,12 @@ kbd {
   transition: opacity 0.2s ease;
 }
 
-.modal-backdrop.active {
-  opacity: 1;
-  pointer-events: auto;
+.modal-backdrop.active,
+.modal-backdrop.is-active,
+.modal-backdrop.open {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
 }
 
 .modal-sheet {
@@ -1068,8 +1079,10 @@ kbd {
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.modal-backdrop.active .modal-sheet {
-  transform: translateY(0) scale(1);
+.modal-backdrop.active .modal-sheet,
+.modal-backdrop.is-active .modal-sheet,
+.modal-backdrop.open .modal-sheet {
+  transform: translateY(0) scale(1) !important;
 }
 
 .modal-header {

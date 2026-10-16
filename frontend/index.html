@@ -373,14 +373,14 @@
     </div>
 
     <!-- Modal de Detalhes da Falha (Diagnóstico) -->
-    <div id="modal-error-details" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="error-modal-title">
+    <div id="modal-error-details" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="error-modal-title" aria-hidden="true">
       <div class="modal-sheet" style="max-width: 580px; max-height: 85vh; display: flex; flex-direction: column;">
         <header class="modal-header">
           <h3 id="error-modal-title" style="display: flex; align-items: center; gap: 8px;">
             <svg class="i" style="color: #ef4444;"><use href="#info"/></svg>
-            Detalhes da Falha
+            Diagnóstico da Falha no Download
           </h3>
-          <button class="x btn-close-modal" aria-label="Fechar diagnóstico"><svg class="i"><use href="#x"/></svg></button>
+          <button id="modal-close-btn" class="x btn-close-modal" aria-label="Fechar diagnóstico"><svg class="i"><use href="#x"/></svg></button>
         </header>
         <div class="modal-content" style="flex: 1; overflow-y: auto; padding: 16px; display: grid; gap: 14px;">
           <div class="error-summary-box" style="padding: 12px 14px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; color: var(--tx);">
@@ -394,13 +394,16 @@
             </summary>
             <div style="margin-top: 10px; display: grid; gap: 8px;">
               <textarea id="error-modal-raw-log" readonly rows="8" style="width: 100%; font-family: monospace; font-size: 11.5px; background: var(--bg); color: var(--tx); border: 1px solid var(--line); border-radius: 6px; padding: 8px; resize: vertical;"></textarea>
-              <button type="button" id="btn-copy-error-log" class="btn-secondary" style="height: 30px; font-size: 12px; justify-self: end; display: flex; align-items: center; gap: 6px;">
-                <svg class="i"><use href="#clip"/></svg>Copiar Log
-              </button>
             </div>
           </details>
         </div>
-        <footer class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+        <footer class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line);">
+          <button type="button" id="btn-copy-error-log" class="btn secondary" style="height: 34px; font-size: 12.5px; padding: 0 14px; display: flex; align-items: center; gap: 6px; margin-right: auto;">
+            <svg class="i"><use href="#clip"/></svg>Copiar Informações Técnicas
+          </button>
+          <button type="button" id="btn-modal-close-footer" class="btn secondary btn-close-modal" style="height: 34px; font-size: 12.5px; padding: 0 14px;">
+            Fechar
+          </button>
           <button type="button" id="btn-error-retry" class="btn main" style="height: 34px; font-size: 12.5px; padding: 0 16px; display: flex; align-items: center; gap: 6px;">
             <svg class="i"><use href="#retry"/></svg>Tentar Novamente
           </button>

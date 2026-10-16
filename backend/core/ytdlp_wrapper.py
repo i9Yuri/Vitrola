@@ -3,7 +3,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from .system import format_bytes, format_seconds, sanitize_filename
 
 YTDLP_BIN = shutil.which("yt-dlp") or "/usr/local/bin/yt-dlp"
@@ -351,6 +351,60 @@ def can_embed_thumbnail(container_format: Optional[str] = None, audio_codec: Opt
     return fmt in SUPPORTED_THUMBNAIL_CONTAINERS
 
 
+def purge_partial_download_artifacts(
+    target_dir: Union[str, Path],
+    media_title: Optional[str] = None,
+    video_id: Optional[str] = None,
+) -> None:
+    """Purga preventivamente arquivos residuais parciais (.part, .ytdl, .temp)
+    no diretório de destino para impedir a ocorrência de HTTP Error 416 (Requested range not satisfiable).
+    Trata exceções de permissão/concorrência defensivamente sem interromper o fluxo principal.
+    """
+    if not target_dir:
+        return
+    try:
+        p_dir = Path(target_dir).expanduser().resolve()
+        if not p_dir.is_dir():
+            return
+
+        id_str = str(video_id).strip().lower() if video_id else None
+        clean_title = (
+            re.sub(r"[^\w\s\-\.\u00C0-\u017F]", "", str(media_title)).strip().lower()
+            if media_title
+            else ""
+        )
+
+        for entry in p_dir.iterdir():
+            if not entry.is_file():
+                continue
+            name_lower = entry.name.lower()
+            is_partial = (
+                name_lower.endswith(".part")
+                or name_lower.endswith(".ytdl")
+                or ".part-" in name_lower
+                or name_lower.endswith(".temp")
+            )
+            if not is_partial:
+                continue
+
+            match = False
+            if id_str and id_str in name_lower:
+                match = True
+            elif clean_title and len(clean_title) >= 4:
+                prefix = clean_title[:15]
+                if prefix in name_lower:
+                    match = True
+
+            if match:
+                try:
+                    entry.unlink()
+                    print(f"[YtDlp] Purged partial artifact: {entry.name}")
+                except Exception as e:
+                    print(f"[YtDlp] Warning: Could not remove locked partial file {entry.name}: {e}")
+    except Exception as e:
+        print(f"[YtDlp] Warning during partial artifacts scan: {e}")
+
+
 def build_download_command(
     url: str,
     mode: str,
@@ -378,6 +432,9 @@ def build_download_command(
         FFMPEG_BIN,
         "--windows-filenames",  # Ext4 / Linux safe filenames without forbidden chars
         "--no-part",            # Clean output
+        "--no-continue",        # Impede requisições HTTP Range inválidas (HTTP 416)
+        "--concurrent-fragments",
+        "1",                    # Download sequencial limpo desde byte zero
         "--newline",            # One progress event per line
         # Precise stdout progress markers
         "--progress-template",

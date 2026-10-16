@@ -1,8 +1,11 @@
 /**
  * VITROLA - DOWNLOADER CORE (src/main/downloader/core.js)
- * Regras de flags e argumentos do yt-dlp, supressão condicional de --embed-thumbnail
- * para formatos brutos incompatíveis (WebM nativo) e rotinas de retry.
+ * Regras de flags e argumentos do yt-dlp, purga de artefatos parciais (.part/.ytdl)
+ * e injeção mandante de --no-continue para erradicar o erro HTTP 416.
  */
+
+const fs = require('fs');
+const path = require('path');
 
 const SUPPORTED_THUMBNAIL_CONTAINERS = new Set([
   'mp3', 'mkv', 'mka', 'ogg', 'opus', 'flac', 'm4a', 'mp4', 'm4v', 'mov'
@@ -21,22 +24,102 @@ function canEmbedThumbnail(containerFormat, audioCodec) {
 }
 
 /**
- * Monta os argumentos seguros para execução do yt-dlp.
+ * Extrai o identificador de vídeo (v=... ou youtu.be/...) de uma URL caso disponível.
+ * @param {string} url
+ * @returns {string|null}
+ */
+function extractVideoId(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('youtube.com')) {
+      return u.searchParams.get('v');
+    }
+    if (u.hostname.includes('youtu.be')) {
+      return u.pathname.replace(/^\//, '').split('/')[0];
+    }
+  } catch (_) {}
+  return null;
+}
+
+/**
+ * Purga de forma síncrona e defensiva quaisquer arquivos residuais .part ou .ytdl.
+ * Captura exceções de concorrência ou permissão sem interromper o fluxo principal.
+ * @param {string} targetDir
+ * @param {string} [mediaTitle]
+ * @param {string} [videoId]
+ */
+function purgePartialDownloadArtifacts(targetDir, mediaTitle = '', videoId = null) {
+  if (!targetDir) return;
+  try {
+    if (!fs.existsSync(targetDir)) return;
+
+    const files = fs.readdirSync(targetDir);
+    const idStr = videoId ? String(videoId).trim() : null;
+    const cleanTitle = mediaTitle
+      ? String(mediaTitle).replace(/[^\w\s\-\.\u00C0-\u017F]/gi, '').trim().toLowerCase()
+      : '';
+
+    for (const file of files) {
+      const lowerFile = file.toLowerCase();
+      const isPartial = (
+        lowerFile.endsWith('.part') ||
+        lowerFile.endsWith('.ytdl') ||
+        lowerFile.includes('.part-') ||
+        lowerFile.endsWith('.temp')
+      );
+
+      if (!isPartial) continue;
+
+      let match = false;
+      if (idStr && lowerFile.includes(idStr.toLowerCase())) {
+        match = true;
+      } else if (cleanTitle && cleanTitle.length >= 4) {
+        const prefix = cleanTitle.slice(0, 15);
+        if (lowerFile.includes(prefix)) {
+          match = true;
+        }
+      }
+
+      if (match) {
+        try {
+          const filePath = path.join(targetDir, file);
+          fs.unlinkSync(filePath);
+          console.log(`[Downloader] Purged partial artifact: ${file}`);
+        } catch (unlinkErr) {
+          console.warn(`[Downloader] Warning: Could not remove locked partial file ${file}: ${unlinkErr.message}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`[Downloader] Warning during partial artifacts scan in ${targetDir}: ${err.message}`);
+  }
+}
+
+/**
+ * Constrói argumentos seguros para o yt-dlp garantindo conformidade com o schema DownloadOptions.
  * @param {Object} options
+ * @param {string} options.url
+ * @param {string} [options.targetPath]
+ * @param {string} [options.outputDir]
+ * @param {boolean} [options.isOriginal]
+ * @param {boolean} [options.disableContinue=true]
  * @returns {string[]}
  */
-function buildDownloadArgs(options = {}) {
+function buildYtDlpDownloadArgs(options = {}) {
   const {
     url,
+    targetPath,
+    outputDir = targetPath,
+    isOriginal = false,
+    disableContinue = true,
     mode = 'audio',
-    outputDir,
     formatId,
     targetRes = 1080,
     embedMetadata = true,
     embedThumbnail = true,
     embedSubtitles = false,
     subtitleLang,
-    isOriginalQuality = false,
     targetFormat
   } = options;
 
@@ -44,19 +127,28 @@ function buildDownloadArgs(options = {}) {
     '--no-playlist',
     '--ignore-config',
     '--windows-filenames',
-    '--newline'
+    '--newline',
+    '--no-part',               // Download direto sem renomeação .part
+    '--concurrent-fragments', '1' // Download sequencial atômico desde byte 0
   ];
+
+  // Injeção mandante de --no-continue para erradicar HTTP Error 416
+  if (disableContinue !== false) {
+    args.push('--no-continue');
+  }
 
   if (outputDir) {
     args.push('-o', `${outputDir}/%(title)s.%(ext)s`);
   }
 
-  const isOriginal = isOriginalQuality ||
+  const isOrig = Boolean(
+    isOriginal ||
     String(targetFormat).toLowerCase() === 'original' ||
-    String(formatId).toLowerCase() === 'original';
+    String(formatId).toLowerCase() === 'original'
+  );
 
   if (mode === 'audio') {
-    if (isOriginal) {
+    if (isOrig) {
       args.push('-f', 'bestaudio/best');
     } else if (formatId) {
       args.push('-f', formatId);
@@ -70,7 +162,7 @@ function buildDownloadArgs(options = {}) {
 
     if (embedThumbnail) {
       const isIncompatible = (
-        isOriginal ||
+        isOrig ||
         (targetFormat && ['webm', 'original', 'source'].includes(String(targetFormat).toLowerCase()))
       ) && (!targetFormat || !canEmbedThumbnail(targetFormat));
 
@@ -86,7 +178,7 @@ function buildDownloadArgs(options = {}) {
     }
   } else {
     // Mode Video
-    if (isOriginal) {
+    if (isOrig) {
       args.push('-f', 'bestvideo+bestaudio/best');
     } else if (formatId) {
       args.push('-f', `${formatId}+bestaudio[ext=m4a]/bestaudio/best`);
@@ -101,7 +193,7 @@ function buildDownloadArgs(options = {}) {
     }
 
     if (embedThumbnail) {
-      const isIncompatible = isOriginal && (!targetFormat || !canEmbedThumbnail(targetFormat));
+      const isIncompatible = isOrig && (!targetFormat || !canEmbedThumbnail(targetFormat));
       if (isIncompatible) {
         args.push('--write-thumbnail');
       } else {
@@ -121,8 +213,13 @@ function buildDownloadArgs(options = {}) {
   return args;
 }
 
+const buildDownloadArgs = buildYtDlpDownloadArgs;
+
 module.exports = {
   SUPPORTED_THUMBNAIL_CONTAINERS,
   canEmbedThumbnail,
+  extractVideoId,
+  purgePartialDownloadArtifacts,
+  buildYtDlpDownloadArgs,
   buildDownloadArgs
 };

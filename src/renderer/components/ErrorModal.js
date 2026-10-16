@@ -1,6 +1,7 @@
 /**
  * VITROLA - COMPONENTE ERROR MODAL (ErrorModal.js)
  * Modal descritivo amigável com visualizador de log técnico expansível e ação de reexecução imediata.
+ * Implementa o contrato openErrorModal(details) e closeErrorModal().
  */
 
 export class ErrorModal {
@@ -12,10 +13,11 @@ export class ErrorModal {
     this.rawLogEl = null;
     this.btnCopy = null;
     this.btnRetry = null;
-    this.btnClose = null;
+    this.closeButtons = [];
     this.currentTaskId = null;
     this.onRetry = options.onRetry || (() => {});
     this.onToast = options.onToast || (() => {});
+    this._handleKeydown = this.handleKeydown.bind(this);
   }
 
   mount(modalElement = document.getElementById("modal-error-details")) {
@@ -28,19 +30,19 @@ export class ErrorModal {
     this.rawLogEl = modalElement.querySelector("#error-modal-raw-log");
     this.btnCopy = modalElement.querySelector("#btn-copy-error-log");
     this.btnRetry = modalElement.querySelector("#btn-error-retry");
-    this.btnClose = modalElement.querySelector(".btn-close-modal");
+    this.closeButtons = Array.from(modalElement.querySelectorAll(".btn-close-modal, #modal-close-btn, #btn-modal-close-footer"));
 
     this.bindEvents();
   }
 
   bindEvents() {
-    if (this.btnClose) {
-      this.btnClose.addEventListener("click", () => this.close());
-    }
+    this.closeButtons.forEach((btn) => {
+      btn.addEventListener("click", () => this.closeErrorModal());
+    });
 
     if (this.modal) {
       this.modal.addEventListener("click", (e) => {
-        if (e.target === this.modal) this.close();
+        if (e.target === this.modal) this.closeErrorModal();
       });
     }
 
@@ -51,77 +53,119 @@ export class ErrorModal {
     if (this.btnRetry) {
       this.btnRetry.addEventListener("click", () => {
         const tid = this.currentTaskId;
-        this.close();
+        this.closeErrorModal();
         if (tid && typeof this.onRetry === "function") {
           this.onRetry(tid);
         }
       });
     }
 
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && this.isOpen()) {
-        this.close();
-      }
-    });
+    window.removeEventListener("keydown", this._handleKeydown);
+    window.addEventListener("keydown", this._handleKeydown);
   }
 
-  open(errorDetails = {}, onRetry = null) {
+  handleKeydown(e) {
+    if (e.key === "Escape" && this.isOpen()) {
+      this.closeErrorModal();
+    }
+  }
+
+  /**
+   * Abre o modal com os detalhes da falha.
+   * Contrato canônico: openErrorModal(details)
+   * @param {Object} details - { taskId, mediaTitle, httpStatus?, message, rawLog, timestamp, suggestedAction }
+   * @param {Function} [onRetry]
+   */
+  openErrorModal(details = {}, onRetry = null) {
     if (!this.modal) {
       this.mount();
       if (!this.modal) return;
     }
 
-    this.currentTaskId = errorDetails.taskId || null;
+    this.currentTaskId = details.taskId || null;
     if (onRetry) {
       this.onRetry = onRetry;
     }
 
+    const messageText = details.message || details.summary || "Ocorreu uma falha no processamento deste download.";
+    const suggestionText = details.suggestedAction || (
+      details.httpStatus === 416
+        ? "Arquivos temporários parciais corrompidos foram limpos. Clique em 'Tentar Novamente' para reiniciar a extração atômica."
+        : "Tente novamente ou verifique se o link ainda está acessível."
+    );
+    const rawText = details.rawLog || details.rawErrorLog || details.raw_log || "Nenhum detalhe técnico adicional arquivado.";
+
     if (this.summaryEl) {
-      this.summaryEl.textContent = errorDetails.summary || "Ocorreu uma falha no processamento deste download.";
+      this.summaryEl.textContent = messageText;
     }
 
     if (this.suggestionEl) {
-      this.suggestionEl.textContent = errorDetails.suggestedAction || "Tente novamente.";
+      this.suggestionEl.textContent = suggestionText;
     }
 
     if (this.rawLogEl) {
-      this.rawLogEl.value = errorDetails.rawErrorLog || errorDetails.raw_log || "Nenhum log adicional retornado.";
+      this.rawLogEl.value = rawText;
     }
 
     const drawer = this.modal.querySelector(".error-log-drawer");
     if (drawer) {
-      drawer.open = false; // Fecha a gaveta por padrão
+      drawer.open = false; // Gaveta fechada por padrão
     }
 
-    this.modal.classList.add("open");
+    this.modal.setAttribute("aria-hidden", "false");
+    this.modal.classList.add("is-active", "active", "open");
+    this.modal.style.display = "grid";
+  }
+
+  open(details = {}, onRetry = null) {
+    this.openErrorModal(details, onRetry);
+  }
+
+  /**
+   * Fecha o modal de detalhes de falha.
+   * Contrato canônico: closeErrorModal()
+   */
+  closeErrorModal() {
+    if (this.modal) {
+      this.modal.setAttribute("aria-hidden", "true");
+      this.modal.classList.remove("is-active", "active", "open");
+      this.modal.style.display = "none";
+    }
   }
 
   close() {
-    if (this.modal) {
-      this.modal.classList.remove("open");
-    }
+    this.closeErrorModal();
   }
 
   isOpen() {
-    return this.modal && this.modal.classList.contains("open");
+    return this.modal && (
+      this.modal.classList.contains("is-active") ||
+      this.modal.classList.contains("active") ||
+      this.modal.classList.contains("open")
+    );
   }
 
   async copyRawLog() {
     if (!this.rawLogEl) return;
     const text = this.rawLogEl.value;
     try {
-      if (window.electronAPI && typeof window.electronAPI.readClipboard === "function") {
-        // Fallback or copy via navigator
-      }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
       } else {
         this.rawLogEl.select();
         document.execCommand("copy");
       }
-      this.onToast("Log copiado para a área de transferência!", "success");
+      this.onToast("Informações técnicas copiadas para a área de transferência!", "success");
     } catch (err) {
-      this.onToast("Não foi possível copiar o log.", "warning");
+      this.onToast("Não foi possível copiar os dados técnicos.", "warning");
     }
   }
 }
+
+export const ErrorModalController = {
+  init(options = {}) {
+    const instance = new ErrorModal(options);
+    instance.mount();
+    return instance;
+  }
+};

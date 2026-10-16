@@ -2,6 +2,22 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.5.4] - 2026-10-15
+
+### Correção de Stacking Context da Busca, Erradicação do Erro HTTP 416 e Restauração do Modal de Diagnóstico
+- **Reestruturação Definitiva dos Contextos de Empilhamento (Z-Index)**:
+  - Isolamento de camadas: `.search` com `position: relative; z-index: 30;` e `.hero` com `position: relative; z-index: 25;`, posicionando o campo de busca e seus botões ("Colar" e "Buscar") inequivocamente à frente do contorno do disco de vinil.
+  - O contêiner `.disc` recebeu `position: absolute; z-index: 5 !important;`, e pseudo-elementos `.disc:after` e `.vinyl:after` foram blindados com `pointer-events: none !important;`.
+  - Salvaguarda de colisão em `VinylDisc.js` para ceder o foco integralmente à barra de pesquisa em qualquer clique ou ponteiro sobre o formulário.
+- **Erradicação do Erro Fatal de Download (HTTP Error 416: Requested range not satisfiable)**:
+  - Implementação de `purgePartialDownloadArtifacts` (em `core.js` e `ytdlp_wrapper.py`) para purga defensiva de resíduos `.part`, `.ytdl` e `.temp` antes de cada execução e retentativa de tarefa.
+  - Injeção obrigatória da flag `--no-continue` no construtor de argumentos do yt-dlp (`buildYtDlpDownloadArgs` e `build_download_command`), bloqueando requisições de continuação rejeitadas pelos servidores de streaming.
+  - Ativação de `--concurrent-fragments 1` e `--no-part`, forçando download sequencial limpo e atômico a partir do byte zero.
+- **Restauração e Delegação de Eventos do Botão Informacional de Erro ([i])**:
+  - Implementação do componente `RecentDownloads.js` com ouvinte de clique delegado duradouro no contêiner permanente da lista (`#recent-downloads-list`), interceptando `.btn-error-info`, `.btn-retry-task` e `.btn-cancel-task` via `event.target.closest()`.
+  - Criação do `task-store.js` em memória com contratos canônicos `registerDownloadFailure` e `retrieveDownloadFailure` mapeados por `taskId`.
+  - Atualização do `ErrorModal.js` para cumprir o contrato `openErrorModal(details)` / `closeErrorModal()`, suportando classes de visibilidade `.is-active`, `.active`, `.open` com `aria-hidden="false"`, botão de cópia de logs para o clipboard e botão de fechar acessível (`#modal-close-btn`).
+
 ## [2.5.3] - 2026-10-15
 
 ### Correção de Crash de Miniatura, Diagnóstico e Retentativa, Vinil Interativo e Estabilidade de Janela

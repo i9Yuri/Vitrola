@@ -9,9 +9,18 @@ import subprocess
 import shutil
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
-from .core.ytdlp_wrapper import build_download_command, clean_media_title
+from .core.ytdlp_wrapper import (
+    build_download_command,
+    clean_media_title,
+    purge_partial_download_artifacts,
+)
 from .core.system import get_download_directory, open_in_file_manager
+
+def extract_video_id_from_url(url: str) -> Optional[str]:
+    if not url:
+        return None
+    m = re.search(r"(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})", url)
+    return m.group(1) if m else None
 
 def get_history_file() -> Path:
     user_hist = Path(os.path.expanduser("~/.config/vitrola/history.json"))
@@ -193,6 +202,14 @@ class DownloadManager:
             if not task:
                 return None
 
+            # Purga preventiva de resíduos parciais antes de reprocessar
+            try:
+                download_dir = get_download_directory()
+                vid_id = extract_video_id_from_url(task.url)
+                purge_partial_download_artifacts(download_dir, task.title, vid_id)
+            except Exception as e:
+                print(f"[Downloader] Aviso na purga de arquivos parciais no retry: {e}")
+
             # Se suppress_thumbnail for True ou se a falha anterior envolveu miniatura,
             # desabilita estritamente embed_thumbnail para a tentativa de contingência
             is_thumb_err = bool(task.error_details and task.error_details.get("isThumbnailError"))
@@ -266,6 +283,14 @@ class DownloadManager:
 
     def _run_task(self, task: DownloadTask):
         download_dir = get_download_directory()
+
+        # Purga síncrona/defensiva prévia de artefatos temporários (.part/.ytdl)
+        try:
+            vid_id = extract_video_id_from_url(task.url)
+            purge_partial_download_artifacts(download_dir, task.title, vid_id)
+        except Exception as e:
+            print(f"[Downloader] Aviso na purga de artefatos parciais: {e}")
+
         is_original = bool(
             task.options.get("is_original_quality")
             or task.options.get("isOriginalQuality")
@@ -468,9 +493,18 @@ class DownloadManager:
                     or ("Postprocessing: Error" in raw_logs and "thumbnail" in raw_logs)
                 )
 
+                # Detecção do erro HTTP 416 (Requested range not satisfiable)
+                is_416_err = (
+                    "HTTP Error 416" in raw_logs
+                    or "Requested range not satisfiable" in raw_logs
+                )
+
                 if is_thumb_err:
                     summary = "O formato bruto extraído (WebM) não suporta miniatura embutida internamente."
-                    suggested = "Clique em 'Tentar novamente'. O download será reexecutado salvando a capa externamente sem travar o arquivo de áudio."
+                    suggested = "Clique em 'Tentar Novamente'. O download será reexecutado salvando a capa externamente sem travar o arquivo de áudio."
+                elif is_416_err:
+                    summary = "Erro de faixa de bytes (HTTP Error 416: Requested range not satisfiable)."
+                    suggested = "Foram detectados resíduos parciais corrompidos (.part/.ytdl). Clique em 'Tentar Novamente' para que o Vitrola limpe os arquivos temporários e realize um download atômico limpo."
                 else:
                     err_lines = [l for l in task.logs if "ERROR:" in l or "error:" in l.lower()]
                     if err_lines:
@@ -484,9 +518,14 @@ class DownloadManager:
                 task.error = summary
                 task.error_details = {
                     "taskId": task.task_id,
+                    "mediaTitle": task.title or "Mídia Desconhecida",
+                    "httpStatus": 416 if is_416_err else None,
+                    "message": summary,
                     "summary": summary,
+                    "rawLog": raw_logs or f"Processo finalizado com código {ret_code}",
                     "rawErrorLog": raw_logs or f"Processo finalizado com código {ret_code}",
                     "suggestedAction": suggested,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "isThumbnailError": is_thumb_err,
                 }
 
@@ -498,9 +537,13 @@ class DownloadManager:
             task.error = summary
             task.error_details = {
                 "taskId": task.task_id,
+                "mediaTitle": task.title or "Mídia Desconhecida",
+                "message": summary,
                 "summary": summary,
+                "rawLog": str(e),
                 "rawErrorLog": str(e),
                 "suggestedAction": "Tente novamente.",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "isThumbnailError": False,
             }
             task.broadcast()

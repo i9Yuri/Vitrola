@@ -55,6 +55,19 @@ export class VinylDisc {
     // Apenas botão principal (esquerdo) ou toque
     if (e.button !== undefined && e.button !== 0) return;
 
+    // Se o ponteiro estiver sobre a barra de pesquisa ou seus botões, cede totalmente o clique
+    if (e.target && (e.target.closest(".search") || e.target.closest("#search-form"))) {
+      return;
+    }
+    try {
+      if (typeof document.elementFromPoint === "function") {
+        const elUnder = document.elementFromPoint(e.clientX, e.clientY);
+        if (elUnder && (elUnder.closest(".search") || elUnder.closest("#search-form"))) {
+          return;
+        }
+      }
+    } catch (_) {}
+
     try {
       e.preventDefault();
     } catch (_) {}
