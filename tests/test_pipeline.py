@@ -1,3 +1,4 @@
+import os
 import json
 import subprocess
 import unittest
@@ -470,6 +471,58 @@ class TestVitrolaCore(unittest.TestCase):
 
         res_preload = subprocess.run(["node", "-c", str(preload_js)], capture_output=True, text=True)
         self.assertEqual(res_preload.returncode, 0, f"preload.js syntax error: {res_preload.stderr}")
+
+    def test_packaging_and_binary_resolution(self):
+        root = Path(__file__).resolve().parent.parent
+        package_json_path = root / "package.json"
+        self.assertTrue(package_json_path.exists(), "package.json must exist")
+
+        with open(package_json_path, "r", encoding="utf-8") as f:
+            pkg = json.load(f)
+
+        self.assertIn("build", pkg, "package.json must have 'build' field")
+        bld = pkg["build"]
+        self.assertTrue(bld.get("asar"), "asar must be true")
+        self.assertIn("**/bin/*", bld.get("asarUnpack", []), "asarUnpack must contain '**/bin/*'")
+        self.assertEqual(bld.get("compression"), "normal")
+        self.assertEqual(bld.get("appId"), "com.vitrola.app")
+        self.assertEqual(bld.get("productName"), "Vitrola")
+        self.assertIn("linux", bld)
+        self.assertEqual(bld["linux"]["category"], "AudioVideo")
+
+        # Test local bin binaries existence and execution bits
+        bin_dir = root / "bin"
+        self.assertTrue(bin_dir.is_dir(), "bin directory must exist")
+        yt_bin = bin_dir / "yt-dlp"
+        ff_bin = bin_dir / "ffmpeg"
+        self.assertTrue(yt_bin.exists(), "bin/yt-dlp must exist")
+        self.assertTrue(ff_bin.exists(), "bin/ffmpeg must exist")
+        self.assertTrue(os.access(yt_bin, os.X_OK), "bin/yt-dlp must be executable")
+        self.assertTrue(os.access(ff_bin, os.X_OK), "bin/ffmpeg must be executable")
+
+        # Test getExecutableBinaryPath in Node.js
+        check_script = (
+            "const { getExecutableBinaryPath } = require('./src/main/downloader/core');"
+            "const ytdlp = getExecutableBinaryPath('yt-dlp');"
+            "const ffmpeg = getExecutableBinaryPath('ffmpeg');"
+            "if (!ytdlp || !ffmpeg) process.exit(1);"
+            "console.log('SUCCESS');"
+        )
+        res_bin = subprocess.run(["node", "-e", check_script], cwd=str(root), capture_output=True, text=True)
+        self.assertEqual(res_bin.returncode, 0, f"getExecutableBinaryPath failed: {res_bin.stderr}")
+        self.assertIn("SUCCESS", res_bin.stdout)
+
+        # Test bootstrapOptimizedWindow export
+        check_bootstrap = (
+            "const main = require('./src/main/main');"
+            "if (typeof main.bootstrapOptimizedWindow !== 'function') process.exit(1);"
+            "if (typeof main.windowController.minimizeWindow !== 'function') process.exit(2);"
+            "if (typeof main.windowController.forceTeardown !== 'function') process.exit(3);"
+            "console.log('BOOTSTRAP_OK');"
+        )
+        res_boot = subprocess.run(["node", "-e", check_bootstrap], cwd=str(root), capture_output=True, text=True)
+        self.assertEqual(res_boot.returncode, 0, f"bootstrap export check failed: {res_boot.stderr}")
+        self.assertIn("BOOTSTRAP_OK", res_boot.stdout)
 
 
 if __name__ == "__main__":

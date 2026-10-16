@@ -8,6 +8,78 @@ const fs = require('fs');
 const path = require('path');
 const { purgeOrphanThumbnails } = require('./post-processor');
 
+let electronApp = null;
+try {
+  const electron = require('electron');
+  electronApp = electron.app;
+} catch (_) {}
+
+/**
+ * Resolução dinâmica e resiliente do caminho absoluto dos binários internos empacotados
+ * via process.resourcesPath ou extração do ASAR (app.asar.unpacked/bin/),
+ * com fallback para ambiente de desenvolvimento local e diretórios do sistema operacional.
+ * @param {'yt-dlp' | 'ffmpeg'} binaryName
+ * @returns {string} Caminho absoluto para o binário executável
+ */
+function getExecutableBinaryPath(binaryName) {
+  if (!binaryName) return '';
+
+  const isPackaged = electronApp
+    ? Boolean(electronApp.isPackaged)
+    : (process.mainModule && process.mainModule.filename && process.mainModule.filename.includes('app.asar'));
+
+  // 1. Resolução em ambiente empacotado (asarUnpack ou extraResources)
+  if (isPackaged && process.resourcesPath) {
+    const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'bin', binaryName);
+    if (fs.existsSync(unpackedPath)) {
+      try {
+        fs.chmodSync(unpackedPath, 0o755);
+      } catch (_) {}
+      return unpackedPath;
+    }
+
+    const resourcesBinPath = path.join(process.resourcesPath, 'bin', binaryName);
+    if (fs.existsSync(resourcesBinPath)) {
+      try {
+        fs.chmodSync(resourcesBinPath, 0o755);
+      } catch (_) {}
+      return resourcesBinPath;
+    }
+  }
+
+  // 2. Resolução em ambiente de desenvolvimento local (diretório bin/ na raiz do projeto)
+  const localProjectBin = path.resolve(__dirname, '../../../bin', binaryName);
+  if (fs.existsSync(localProjectBin)) {
+    try {
+      fs.chmodSync(localProjectBin, 0o755);
+    } catch (_) {}
+    return localProjectBin;
+  }
+
+  const altLocalBin = path.resolve(__dirname, '../../bin', binaryName);
+  if (fs.existsSync(altLocalBin)) {
+    try {
+      fs.chmodSync(altLocalBin, 0o755);
+    } catch (_) {}
+    return altLocalBin;
+  }
+
+  // 3. Fallback no sistema operacional
+  const systemCandidates = [
+    `/usr/local/bin/${binaryName}`,
+    `/usr/bin/${binaryName}`,
+    binaryName
+  ];
+
+  for (const candidate of systemCandidates) {
+    if (candidate === binaryName || fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return binaryName;
+}
+
 const SUPPORTED_THUMBNAIL_CONTAINERS = new Set([
   'mp3', 'mkv', 'mka', 'ogg', 'opus', 'flac', 'm4a', 'mp4', 'm4v', 'mov'
 ]);
@@ -142,6 +214,11 @@ function buildYtDlpDownloadArgs(options = {}) {
     args.push('-o', `${outputDir}/%(title)s.%(ext)s`);
   }
 
+  const ffmpegLocation = getExecutableBinaryPath('ffmpeg');
+  if (ffmpegLocation) {
+    args.push('--ffmpeg-location', ffmpegLocation);
+  }
+
   const isOrig = Boolean(
     isOriginal ||
     String(targetFormat).toLowerCase() === 'original' ||
@@ -248,6 +325,11 @@ function buildSingleFileAudioArgs(payload = {}) {
     args.push('-o', `${targetDirectory}/%(title)s.%(ext)s`);
   }
 
+  const ffmpegLocation = getExecutableBinaryPath('ffmpeg');
+  if (ffmpegLocation) {
+    args.push('--ffmpeg-location', ffmpegLocation);
+  }
+
   args.push('-x', '--audio-format', targetFmt, '--no-keep-video');
 
   if (embedMetadata) {
@@ -269,6 +351,7 @@ module.exports = {
   SUPPORTED_THUMBNAIL_CONTAINERS,
   canEmbedThumbnail,
   extractVideoId,
+  getExecutableBinaryPath,
   purgePartialDownloadArtifacts,
   purgeOrphanThumbnails,
   buildYtDlpDownloadArgs,

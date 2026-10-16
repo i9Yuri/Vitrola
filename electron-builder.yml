@@ -1,0 +1,30 @@
+appId: com.vitrola.app
+productName: Vitrola
+executableName: vitrola
+compression: normal
+asar: true
+asarUnpack:
+  - "**/bin/*"
+
+files:
+  - "src/**/*"
+  - "bin/**/*"
+  - "config/**/*"
+  - "package.json"
+
+extraResources:
+  - from: "bin"
+    to: "bin"
+    filter:
+      - "**/*"
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: AudioVideo
+  synopsis: Baixador de mídia de alta performance (Áudio e Vídeo) integrado ao yt-dlp e FFmpeg
+  desktop:
+    StartupWMClass: vitrola
+    Terminal: "false"

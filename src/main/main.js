@@ -388,7 +388,7 @@ function createSecureMainWindow(options = {}) {
 
   const entryHtmlPath = options.entryHtmlPath || path.resolve(__dirname, '../renderer/index.html');
   const preloadScriptPath = options.preloadScriptPath || path.resolve(__dirname, 'preload.js');
-  const themeBgColor = options.themeBgColor || '#181A21';
+  const themeBgColor = options.themeBgColor || '#081017';
   const isDevMode = options.isDevMode !== undefined ? options.isDevMode : (!app.isPackaged || process.env.NODE_ENV === 'development');
 
   console.log('\x1b[34m[BOOT] Instanciando BrowserWindow defensiva...\x1b[0m');
@@ -513,45 +513,83 @@ function createSecureMainWindow(options = {}) {
   return win;
 }
 
+/**
+ * Inicialização acelerada da janela principal (Zero-Wait Bootstrap).
+ * Pré-aloca a BrowserWindow com show: false e background sóbrio nativo (#081017),
+ * suprime I/O bloqueante antes do primeiro frame e agenda microtasks diferidas
+ * após a emissão de ready-to-show e exibição da janela.
+ * @returns {Promise<BrowserWindow>}
+ */
+async function bootstrapOptimizedWindow() {
+  const prereqs = await validateStartupPrerequisites();
+  registerIpcHandlers();
+
+  const win = createSecureMainWindow({
+    entryHtmlPath: prereqs.resolvedEntryPath,
+    preloadScriptPath: path.resolve(__dirname, 'preload.js'),
+    themeBgColor: '#081017',
+    isDevMode: !app.isPackaged || process.env.NODE_ENV === 'development'
+  });
+
+  // Microtasks diferidas pós-renderização: executadas estritamente após ready-to-show
+  if (win) {
+    win.once('ready-to-show', () => {
+      setImmediate(() => {
+        try {
+          // Pré-aquecimento não-bloqueante de telemetria de armazenamento
+          getStorageTelemetry().catch(() => {});
+        } catch (_) {}
+      });
+    });
+  }
+
+  return win;
+}
+
 let mainWindow = null;
 let isBootstrapReady = false;
 
 if (app) {
   app.setName('Vitrola');
 
-  app.whenReady().then(async () => {
-    console.log('\x1b[32m[BOOT] Electron app.whenReady disparado.\x1b[0m');
-
-    const prereqs = await validateStartupPrerequisites();
-    registerIpcHandlers();
-
-    mainWindow = createSecureMainWindow({
-      entryHtmlPath: prereqs.resolvedEntryPath,
-      preloadScriptPath: path.resolve(__dirname, 'preload.js'),
-      themeBgColor: '#181A21',
-      isDevMode: !app.isPackaged || process.env.NODE_ENV === 'development'
-    });
-
-    isBootstrapReady = true;
-
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        mainWindow = createSecureMainWindow();
+  // Controle de Instância Única (Single Instance Lock)
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    console.log('\x1b[33m[BOOT] Instância prévia do Vitrola já está ativa. Encerrando segunda chamada...\x1b[0m');
+    app.quit();
+  } else {
+    app.on('second-instance', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
       }
     });
-  }).catch((readyErr) => {
-    logStartupDiagnostic('app.whenReady', { message: readyErr.message, stack: readyErr.stack });
-  });
 
-  app.on('window-all-closed', () => {
-    // Se a janela fechou antes do bootstrap terminar, não finalizar de imediato em modo debug
-    if (!isBootstrapReady) {
-      logStartupDiagnostic('early-window-closed', { message: 'Janela fechada antes da conclusão do bootstrap.' });
-    }
-    if (process.platform !== 'darwin') {
-      app.quit();
-    }
-  });
+    app.whenReady().then(async () => {
+      console.log('\x1b[32m[BOOT] Electron app.whenReady disparado. Iniciando bootstrap otimizado...\x1b[0m');
+
+      mainWindow = await bootstrapOptimizedWindow();
+      isBootstrapReady = true;
+
+      app.on('activate', async () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+          mainWindow = await bootstrapOptimizedWindow();
+        }
+      });
+    }).catch((readyErr) => {
+      logStartupDiagnostic('app.whenReady', { message: readyErr.message, stack: readyErr.stack });
+    });
+
+    app.on('window-all-closed', () => {
+      // Se a janela fechou antes do bootstrap terminar, não finalizar de imediato em modo debug
+      if (!isBootstrapReady) {
+        logStartupDiagnostic('early-window-closed', { message: 'Janela fechada antes da conclusão do bootstrap.' });
+      }
+      if (process.platform !== 'darwin') {
+        app.quit();
+      }
+    });
+  }
 }
 
 module.exports = {
@@ -561,6 +599,7 @@ module.exports = {
   logStartupDiagnostic,
   validateStartupPrerequisites,
   createSecureMainWindow,
+  bootstrapOptimizedWindow,
   windowController,
   activeProcessesPool
 };

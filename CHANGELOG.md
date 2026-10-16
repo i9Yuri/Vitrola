@@ -2,6 +2,21 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.6.0] - 2026-10-16
+
+### Esteira de Empacotamento Standalone AppImage, Otimização de Cold Start e Estabilização de Janela em Produção
+- **Esteira de Empacotamento Standalone Portátil (Linux AppImage)**:
+  - Configuração do `electron-builder` (`package.json` e `electron-builder.yml`) com arquitetura `x64`, alvo `AppImage`, consolidação de scripts em `asar: true` e compressão balanceada `compression: "normal"`, priorizando velocidade de montagem FUSE.
+  - Isolamento estático dos binários executáveis (`yt-dlp` e `ffmpeg`) via `asarUnpack: ["**/bin/*"]` e `extraResources`, prevenindo falhas de execução a partir do contêiner virtual ASAR no Linux.
+  - Implementação do contrato canônico `getExecutableBinaryPath(binaryName: 'yt-dlp' | 'ffmpeg')` em `src/main/downloader/core.js` e `frontend/main/downloader/core.js`, com resolução resiliente em `process.resourcesPath`, diretório `bin/` local e caminhos de sistema com permissões defensivas `chmod 0755`.
+- **Otimização Crítica do Tempo de Inicialização (Cold Start / Warm Boot)**:
+  - Implementação do contrato `bootstrapOptimizedWindow(): Promise<BrowserWindow>` com estratégia Zero-Wait: pré-alocação imediata com `show: false` e tom escuro nativo `#081017`, eliminando telas brancas e cintilações.
+  - Supressão de I/O bloqueante antes do primeiro frame e diferimento de verificações secundárias para microtasks disparadas estritamente após a emissão de `ready-to-show` e `win.show()`.
+  - Controle de instância única via `app.requestSingleInstanceLock()`, restaurando a janela ativa e trazendo-a para o primeiro plano caso uma segunda invocação seja tentada.
+- **Estabilização Definitiva dos Controles de Janela em Runtime Empacotado**:
+  - Minimização assíncrona desacoplada de promises e validada com `!win.isDestroyed()`.
+  - Fechamento atômico não-bloqueante (`forceTeardown`) com interrupção forçada (`SIGKILL`) de subprocessos em execução, desconexão total de listeners e encerramento com `win.destroy()` seguido de `app.exit(0)`.
+
 ## [2.5.5] - 2026-10-15
 
 ### Consolidação Atômica em Arquivo Único, Purga de Miniaturas Órfãs e Restauração da Colagem Nativa

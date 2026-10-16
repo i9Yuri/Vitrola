@@ -101,10 +101,28 @@ Dê um duplo clique no arquivo `Testar-Vitrola.desktop` na pasta do projeto ou e
 ./dev.sh
 ```
 
-### 5. Compilação do Executável Standalone Portátil
-Para gerar um executável único e independente em `dist/Vitrola`:
+### 5. Compilação e Execução do Pacote Portátil Standalone (AppImage)
+
+O **Vitrola** conta com uma esteira de empacotamento em executável único portátil de alta performance para o ecossistema Linux x64 com binários nativos (`yt-dlp` e `FFmpeg`) estaticamente acoplados via `asarUnpack`:
+
+#### Gerar o Pacote AppImage:
 ```bash
-./build.sh
+npm run build:linux
+```
+O artefato resultante será gerado em `dist/Vitrola-2.6.0.AppImage` com permissão de execução atribuída.
+
+#### Executar o AppImage Diretamente:
+```bash
+# Execução direta com suporte a FUSE:
+./dist/Vitrola-2.6.0.AppImage
+
+# Execução transparente com extração automática (sistemas sem libfuse2 instalada):
+./dist/Vitrola-2.6.0.AppImage --appimage-extract-and-run
+```
+
+#### Empacotar Diretório para Inspeção / Teste:
+```bash
+npm run pack
 ```
 
 ---

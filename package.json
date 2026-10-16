@@ -1,14 +1,57 @@
 {
   "name": "vitrola",
   "productName": "Vitrola",
-  "version": "2.3.0",
+  "version": "2.6.0",
   "description": "Baixador de mídia de alta performance (Áudio e Vídeo) para desktop integrado ao yt-dlp e FFmpeg",
   "main": "src/main/main.js",
   "scripts": {
     "start": "bash dev.sh",
     "electron": "electron .",
     "test": "python3 -m unittest discover tests",
-    "build": "bash build.sh"
+    "build": "bash build.sh",
+    "build:linux": "electron-builder --linux AppImage",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.vitrola.app",
+    "productName": "Vitrola",
+    "executableName": "vitrola",
+    "compression": "normal",
+    "asar": true,
+    "asarUnpack": [
+      "**/bin/*"
+    ],
+    "files": [
+      "src/**/*",
+      "bin/**/*",
+      "config/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "AudioVideo",
+      "synopsis": "Baixador de mídia de alta performance (Áudio e Vídeo) integrado ao yt-dlp e FFmpeg",
+      "desktop": {
+        "StartupWMClass": "vitrola",
+        "Terminal": "false"
+      }
+    }
   },
   "repository": {
     "type": "git",
@@ -28,5 +71,9 @@
     "media"
   ],
   "author": "Yuri",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  }
 }
