@@ -2,6 +2,7 @@
 downloads/
 *.part
 *.ytdl
+*.AppImage
 __pycache__/
 *.pyc
 *.pyo
@@ -19,5 +20,8 @@ build/
 dist/
 *.spec
 _dev/
+_dev/staging/
+_dev/reference/
 Singleton*
+
 

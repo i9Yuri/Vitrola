@@ -1,82 +1,104 @@
-# Vitrola 🎶 — Baixador de Áudio e Vídeo de Alta Performance
+# Vitrola
 
-Aplicação desktop moderna, autônoma e de alto desempenho para extração e download de mídias (áudio de alta fidelidade sem perdas desnecessárias e vídeo MP4 multi-resolução com legendas e metadados) desenvolvida para o ecossistema desktop Linux (otimizada para Nobara Linux / KDE Plasma) e cross-platform, integrando de forma nativa os motores **yt-dlp** e **FFmpeg**.
+[![Version](https://img.shields.io/badge/version-2.6.0-amber.svg)](package.json)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Linux%20x64%20%7C%20Cross--Platform-emerald.svg)](https://github.com/i9Yuri/Vitrola)
+[![Engine](https://img.shields.io/badge/engine-yt--dlp%20%7C%20FFmpeg-cyan.svg)](https://github.com/yt-dlp/yt-dlp)
 
-> **Repositório Oficial Canônico:** [https://github.com/i9Yuri/Vitrola](https://github.com/i9Yuri/Vitrola)  
-> **Delimitação de Escopo & Projeto Irmão:** O **Vitrola** é estritamente dedicado à esteira de extração, download e pós-processamento de fluxos multimídia. Ele opera com total segregação e independência em relação ao tocador multimídia irmão **JustPlay**.
+> Baixador de mídia de alta performance (áudio e vídeo) para desktop integrado de forma nativa ao **yt-dlp** e **FFmpeg**.
 
----
-
-## ✨ Recursos e Funcionalidades
-
-### 1. Janela Nativa Frameless (Edge-to-Edge)
-- **Topologia Sem Moldura**: Eliminação de barras de janelas aninhadas ou decorativas redundantes do sistema operacional.
-- **Titlebar Integrada**: Controles táteis nativos de minimizar, maximizar/restaurar e fechar conectados diretamente via IPC/API de janela nativa, com arraste fluido no cabeçalho superior.
-- **Tipografia Grotesque**: Interface refinada em `Bricolage Grotesque` e ícones SVG minimalistas com micro-interações táteis.
-
-### 2. Modos Especializados de Download
-- **Modo Áudio Puro**:
-  - Extração em formatos populares e bit-perfect: **MP3 (320 kbps, 256 kbps, 128 kbps)**, **M4A (AAC)**, **OPUS** e **FLAC**.
-  - Embutimento automático de metadados completos (ID3 / Vorbis comment) e artes de álbum em resolução máxima com tratamento contra erros de CDN.
-- **Modo Vídeo Multi-Resolução**:
-  - Download em **MP4**, **WEBM** e **MKV** com seleção de resolução (1080p, 720p, 480p, 360p).
-  - Multiplexação sem perdas via FFmpeg unindo os melhores streams de áudio e vídeo disponíveis.
-  - Suporte a legendas embutidas selecionáveis (`pt,en`).
-
-### 3. Waveform Reativa de Progresso
-- **Envelope Dinâmico de 44 Barras**: Renderização determinística de waveform vertical vinculada ao ID e estado de cada transferência.
-- **Monitoramento em Tempo Real**: Progresso contínuo a 60fps via Server-Sent Events (SSE) com pulso dinâmico `.on.edge` e estatísticas de taxa de transferência (KiB/s, MiB/s) e tempo estimado (ETA).
-
-### 4. Motor de Temas e Acentos
-- **Modos de Superfície**:
-  - **Modo Claro (Light)**
-  - **Modo Escuro Neutro (Slate)**
-  - **Modo Escuro AMOLED (Pure Black `#000000`)**
-- **Cores de Acento Dinâmicas e Fixas**: Acento dinâmico inteligente (Âmbar para áudio, Violeta para vídeo) ou paletas configuráveis: Âmbar, Violeta, Esmeralda, Carmim e Ciano, com zero layout shift.
-- **Bootstrap Anti-FOUC**: Injeção síncrona no cabeçalho do documento prevenindo qualquer flash de conteúdo não estilizado.
-
-### 5. Histórico Inteligente com Deduplicação
-- **Agrupamento Automático**: Identificação por chave de mídia (`mediaKey`) que agrupa downloads repetidos em um único cartão com badge multiplicador (ex.: `2x`).
-- **Validação de Integridade no Sistema de Arquivos**: Checagem de existência do arquivo antes de invocar o gerenciador (Dolphin / Nautilus), notificando caso a mídia tenha sido renomeada ou movida.
-- **Datas em Formato Seguro**: Formatação regional defensiva evitando registros inválidos.
-
-### 6. Governança e Telemetria do yt-dlp
-- **Verificação Assíncrona de Versão**: Telemetria em segundo plano com indicador de integridade operacional.
-- **Atualização In-Place**: Botão dedicado de atualização remota do executável do yt-dlp com buffer de logs ao vivo na interface.
-- **Isolamento de Diretivas (`--ignore-config`)**: Blindagem contra configurações globais host que possam interferir na extração.
+Repositório Oficial Canônico: [https://github.com/i9Yuri/Vitrola](https://github.com/i9Yuri/Vitrola)
 
 ---
 
-## 🛠️ Arquitetura do Sistema
+## Destaques Arquiteturais e Funcionalidades
+
+### 1. Janela Frameless com Controles Integrados
+- **Topologia Sem Bordas (Edge-to-Edge)**: Interface limpa e imersiva sem barras de janela redundantes do sistema operacional.
+- **Barra de Título Integrada**: Arraste contínuo e fluido no topo da janela com controles nativos de minimizar, maximizar/restaurar e fechar.
+- **Desacoplamento Assíncrono sem Deadlocks**: Controle de janela desacoplado do loop principal, garantindo minimização sem falhas de GPU e encerramento atômico com purga imediata de subprocessos (`SIGKILL`) em menos de 100ms.
+
+### 2. Design Inspirado em Vinil e Ergonomia
+- **Cinemática de Rotação por Ponteiro (Drag-to-Spin)**: Disco de vinil decorativo superior com controle rotacional manual por clique e arraste angular contínuo (`Math.atan2`), retenção de ponteiro com `setPointerCapture` e retomada suave da rotação automática sem saltos angulares.
+- **Barra de Pesquisa em Pílula Flutuante**: Campo de entrada com atalho <kbd>Ctrl V</kbd>, botão nativo de colar do clipboard e botão de busca com realce visual.
+- **Colagem Nativa Resiliente**: Botão "Colar" integrado à API nativa da área de transferência do sistema operacional (`electron.clipboard`), com higienização de texto e disparo automático de inspeção para URLs válidas.
+- **Skeleton Screen Neutro com Shimmer**: Transição de carregamento com máscara luminosa deslizante (`@keyframes shimmer`) em placeholders monocromáticos neutros, sem texto fictício ou saltos de layout (Zero Layout Shift).
+
+### 3. Motor yt-dlp & FFmpeg de Alta Fidelidade
+- **Modo Original / Direto da Fonte**: Extração sem conversão ou recodificação destrutiva de bitrate, preservando a integridade original da mídia diretamente do servidor de streaming.
+- **Formatos Dedicados e Padronizados**:
+  - **Áudio**: MP3 (320 kbps, 256 kbps, 128 kbps), Opus e M4A.
+  - **Vídeo**: MP4, WebM e MKV com seleção de resolução (1080p, 720p, 480p, 360p).
+  - *Saneamento estrito: bloqueio e remoção de opções inoperantes em streams web (como FLAC).*
+- **Consolidação em Arquivo Único com Capa Embutida**:
+  - Remux atômico direto com FFmpeg (`-x`, `--audio-format`, `--no-keep-video`).
+  - Embutição automática de metadados e imagem de capa em alta definição via `--embed-thumbnail` e `--add-metadata`.
+  - Purga sistemática de artefatos temporários órfãos (`.webp`, `.png`, `.part`, `.ytdl`), garantindo que apenas o arquivo de música final seja gravado no disco.
+
+### 4. Telemetria de Armazenamento em Tempo Real
+- **Widget de Disco na Barra Lateral**: Monitoramento automático no rodapé da barra lateral exibindo a contagem de faixas de áudio e vídeos locais, espaço total ocupado no diretório de destino e barra de progresso visual de uso do disco.
+
+### 5. Histórico Agregado e Diagnóstico de Falhas
+- **Deduplicação Inteligente**: Agrupamento automático de downloads idênticos por chave de mídia (`mediaKey`) com indicador visual multiplicador (ex.: `2x`, `4x`).
+- **Validação de Disco**: Verificação de integridade no sistema de arquivos antes de abrir o gerenciador (Dolphin / Nautilus), notificando o usuário caso o arquivo tenha sido movido ou excluído.
+- **Modal de Diagnóstico e Retentativa**: Botão informacional de erro `[i]` com modal técnico detalhado, sugestão de ação corretiva, cópia de logs brutos e botão de ação direta "Tentar novamente".
+
+---
+
+## Interface & Theming
+
+O Vitrola conta com um subsistema de personalização visual baseado em tokens semânticos e tingimento dinâmico de superfícies:
+
+### Modos de Superfície
+- **Modo Claro (Light)**: Superfícies claras e arejadas com alto contraste tipográfico e sutis nuances tonais.
+- **Modo Escuro Neutro (Slate / Grafite)**: Fundo escuro com tingimento tonal perceptível (8% a 14% de saturação) alinhado à cor de acento ativa.
+- **Modo Escuro AMOLED (Pure Black `#000000`)**: Preto absoluto em todas as superfícies de base (`--win`, `--desk`, `--side`), reservando a cor de destaque estritamente para bordas finas, badges e estados interativos.
+
+### Paletas de Cores de Acento
+- **Acento Dinâmico**: Alternância inteligente automática (Âmbar para áudio, Violeta para vídeo).
+- **Âmbar** (`#FFB547`)
+- **Violeta** (`#8E96FF`)
+- **Esmeralda** (`#10B981`)
+- **Carmim** (`#F43F5E`)
+- **Ciano** (`#06B6D4`)
+
+*Zero FOUC (Flash of Unstyled Content): Leitura síncrona de preferências no `<head>` do documento antes da renderização do primeiro quadro.*
+
+---
+
+## Arquitetura do Projeto
 
 ```
 Vitrola/
-├── backend/                  # Servidor e Runner Desktop
-│   ├── main.py               # Servidor HTTP Threading e SSE (/api/*)
-│   ├── desktop.py            # Janela nativa frameless (PySide6 / pywebview)
-│   ├── downloader.py         # Orquestrador de tarefas e fila de downloads
-│   └── core/                 # Wrappers yt-dlp, FFmpeg, updater e sistema
-├── src/                      # Código-Fonte Modular
-│   ├── main/                 # Processo Principal / IPC Electron
-│   │   ├── main.js           # Ponto de entrada Electron e registro IPC
-│   │   └── ipc/              # Handlers de janela, arquivos e yt-dlp
-│   ├── renderer/             # Frontend e Interface
-│   │   ├── index.html        # Estrutura DOM e Titlebar
-│   │   ├── components/       # Componentes modulares (TitleBar, Sidebar, Modals)
-│   │   ├── js/               # Controladores (UI, Temas, Governança)
-│   │   └── styles/           # CSS desacoplado (tema, janela, layout)
-│   └── shared/               # Constantes globais e tipagens
-├── config/                   # Configuração e esquemas padrão
+├── bin/                      # Binários nativos empacotados (yt-dlp, ffmpeg)
+├── src/                      # Código-Fonte Modular do Electron
+│   ├── main/                 # Processo Principal
+│   │   ├── main.js           # Ponto de entrada, lifecycle e registro IPC
+│   │   ├── preload.js        # ContextBridge seguro e exposto ao renderer
+│   │   ├── downloader/       # Contratos yt-dlp, flags atômicas e resolução de binários
+│   │   └── ipc/              # Controladores de janela, clipboard nativo e telemetria
+│   ├── renderer/             # Interface de Usuário
+│   │   ├── index.html        # Estrutura DOM e titlebar integrada
+│   │   ├── components/       # Componentes modulares (RecentDownloads, ErrorModal, VinylDisc)
+│   │   ├── js/               # Controladores de UI, temas e histórico
+│   │   └── styles/           # CSS desacoplado (tema, janela, layout, animações)
+│   └── shared/               # Constantes e tipagens compartilhadas
+├── config/                   # Configurações padrão e esquema de histórico
 ├── tests/                    # Suíte de testes unitários automatizados
-├── testar.sh                 # Script de execução rápida com testes
-├── dev.sh                    # Inicializador em modo de desenvolvimento
-├── run.sh                    # Lançador desktop
-└── build.sh                  # Compilador de binário único portátil
+├── electron-builder.yml      # Manifesto de build para AppImage Linux x64
+├── package.json              # Manifesto de dependências e scripts npm
+├── dev.sh                    # Inicializador do ambiente de desenvolvimento
+└── testar.sh                 # Script auxiliar de execução com testes
 ```
 
 ---
 
-## 🚀 Guia de Instalação e Execução
+## Primeiros Passos (Getting Started)
+
+### Pré-requisitos
+- **Node.js**: v18.x ou superior (com `npm`)
+- **Python**: v3.10+ (para execução de testes unitários automatizados)
+- **Linux**: Compatível com Nobara, Fedora, Ubuntu, Debian, Arch Linux e derivados.
 
 ### 1. Clonar o Repositório
 ```bash
@@ -84,67 +106,85 @@ git clone https://github.com/i9Yuri/Vitrola.git
 cd Vitrola
 ```
 
-### 2. Pré-requisitos do Sistema (Linux / Nobara / Debian / Fedora)
-Certifique-se de que as ferramentas essenciais estão instaladas no PATH:
-- **Python 3.10+** (com `PySide6` para janela nativa desktop)
-- **yt-dlp**
-- **FFmpeg** e **FFprobe**
-
-### 3. Execução Rápida para Testes
-Dê um duplo clique no arquivo `Testar-Vitrola.desktop` na pasta do projeto ou execute no terminal:
+### 2. Instalar Dependências
 ```bash
-./testar.sh
+npm install
 ```
 
-### 4. Modo de Desenvolvimento
+### 3. Executar em Modo de Desenvolvimento
+Para iniciar a aplicação diretamente:
 ```bash
-./dev.sh
+npm start
 ```
-
-### 5. Compilação e Execução do Pacote Portátil Standalone (AppImage)
-
-O **Vitrola** conta com uma esteira de empacotamento em executável único portátil de alta performance para o ecossistema Linux x64 com binários nativos (`yt-dlp` e `FFmpeg`) estaticamente acoplados via `asarUnpack`:
-
-#### Gerar o Pacote AppImage:
+Ou alternativamente através do Electron:
 ```bash
-npm run build:linux
-```
-O artefato resultante será gerado em `dist/Vitrola-2.6.0.AppImage` com permissão de execução atribuída.
-
-#### Executar o AppImage Diretamente:
-```bash
-# Execução direta com suporte a FUSE:
-./dist/Vitrola-2.6.0.AppImage
-
-# Execução transparente com extração automática (sistemas sem libfuse2 instalada):
-./dist/Vitrola-2.6.0.AppImage --appimage-extract-and-run
-```
-
-#### Empacotar Diretório para Inspeção / Teste:
-```bash
-npm run pack
+npm run electron
 ```
 
 ---
 
-## 🧪 Suíte de Testes Automatizados
+## Empacotamento para Produção (Standalone AppImage)
 
-A integridade do pipeline de download, flags operacionais do yt-dlp, multiplexação FFmpeg e sanitização de metadados são validadas via unittest:
+O **Vitrola** possui esteira configurada via `electron-builder` para gerar um executável autossuficiente no formato **AppImage** (x64) para Linux com binários nativos (`yt-dlp` e `ffmpeg`) estaticamente acoplados via `asarUnpack`.
+
+### 1. Gerar o Pacote AppImage
 ```bash
+npm run build:linux
+```
+O arquivo executável será compilado em:
+```
+dist/Vitrola-2.6.0.AppImage
+```
+
+### 2. Atribuir Permissão de Execução
+```bash
+chmod +x dist/Vitrola-2.6.0.AppImage
+```
+
+### 3. Executar o Aplicativo
+```bash
+# Execução direta com FUSE ativo:
+./dist/Vitrola-2.6.0.AppImage
+
+# Execução em sistemas sem suporte a FUSE / libfuse2:
+./dist/Vitrola-2.6.0.AppImage --appimage-extract-and-run
+```
+
+### 4. Empacotar Diretório para Inspeção / Teste
+Para inspecionar a estrutura de arquivos sem gerar a imagem SquashFS:
+```bash
+npm run pack
+```
+
+### Otimizações de Inicialização (Cold Start)
+- **Zero-Wait Bootstrap**: Criação da janela com `show: false`, fundo `#081017` e exibição estritamente após o evento `ready-to-show`, atingindo o primeiro quadro em menos de 800ms sem flashes brancos.
+- **Compressão Balanceada**: Configuração `compression: "normal"` para otimizar o tempo de montagem FUSE em diretórios temporários (`/tmp`).
+- **Resolução Dinâmica de Binários (`getExecutableBinaryPath`)**: Priorização de `process.resourcesPath/bin` e `resources/app.asar.unpacked/bin` com permissões defensivas `0755`.
+- **Instância Única (`Single-Instance Lock`)**: Se o aplicativo já estiver em execução, uma nova tentativa restaura e foca a janela existente sem duplicar processos na memória.
+
+---
+
+## Testes Automatizados
+
+A integridade do pipeline de download, resolução de binários nativos, flags do yt-dlp e purga de artefatos temporários são validados por suíte de testes unitários:
+
+```bash
+npm test
+# ou:
 python3 -m unittest discover tests
 ```
 
 ---
 
-## 📜 Histórico & Roadmap
+## Diagnóstico e Solução de Problemas (Troubleshooting)
 
-- **v1.0**: Pipeline inicial de download de mídia portátil com yt-dlp e FFmpeg.
-- **v2.0**: Redesign visual completo com grid 208px/1fr, waveform progress e motor de temas.
-- **v2.1**: Janela nativa frameless com controles integrados, histórico agrupado inteligente com verificação no disco e modal contextual de destino.
-- **v2.2**: Padronização de manifestos, consolidação e governança de armazenamento.
-- **v2.3 (Atual)**: Rebranding definitivo para **Vitrola**, redefinição do repositório oficial para `https://github.com/i9Yuri/Vitrola`, formalização dos contratos IPC de metadados e expurgo completo de referências legadas.
+- **FUSE não instalado**: Se a execução do AppImage exibir mensagem sobre `/tmp` ou FUSE ausente, utilize o parâmetro `--appimage-extract-and-run`.
+- **Erro de Sandbox em Ambientes Headless / Contêineres**: Caso execute em ambientes sem namespaces de usuário desprivilegiados habilitados, adicione o argumento `--no-sandbox`.
+- **Área de Transferência**: O botão "Colar" utiliza a API nativa do Electron (`electron.clipboard`), dispensando autorizações de permissão do navegador.
+- **Resíduos de Download (.part)**: Caso uma conexão de rede seja abruptamente interrompida, a rotina interna expurga automaticamente arquivos `.part` e `.ytdl` antes da retentativa, prevenindo o erro HTTP 416.
 
 ---
 
-## 📄 Licença
-Distribuído sob a licença MIT. Consulte `LICENSE` para mais detalhes.
+## Licença
+
+Distribuído sob a licença **MIT**. Consulte [LICENSE](LICENSE) para mais detalhes.
