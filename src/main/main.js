@@ -7,6 +7,7 @@
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const child_process = require('child_process');
 const { getStorageTelemetry } = require('./ipc/storage-telemetry');
 const { readClipboardText, registerClipboardHandlers } = require('./ipc/clipboard-handler');
 const { registerDownloadHandlers } = require('./ipc/download-handler');
@@ -78,6 +79,190 @@ function getDefaultDownloadPath() {
   const musicDir = path.join(os.homedir(), 'Música', APP_CONFIG.DEFAULT_DOWNLOAD_DIR);
   if (fs.existsSync(musicDir)) return musicDir;
   return path.join(os.homedir(), 'Downloads', APP_CONFIG.DEFAULT_DOWNLOAD_DIR);
+}
+
+/**
+ * Contrato de Resolução de Caminhos Dinâmicos
+ * getExecutableResourcePath(relativePath: string) -> string
+ * Em ambiente empacotado, mapeia a partir de process.resourcesPath.
+ * Em desenvolvimento, mapeia a partir da raiz da aplicação (app.getAppPath()).
+ */
+function getExecutableResourcePath(relativePath = '') {
+  if (app && app.isPackaged) {
+    return path.join(process.resourcesPath, relativePath);
+  }
+  const appPath = (app && typeof app.getAppPath === 'function')
+    ? app.getAppPath()
+    : path.resolve(__dirname, '../..');
+  return path.join(appPath, relativePath);
+}
+
+/**
+ * Garante permissões POSIX de execução (0755) para binários locais em runtime.
+ */
+function ensureBinaryPermissions(binDir) {
+  if (!fs.existsSync(binDir)) return;
+  const binaries = ['yt-dlp', 'ffmpeg', 'ffprobe'];
+  for (const b of binaries) {
+    const fullPath = path.join(binDir, b);
+    if (fs.existsSync(fullPath)) {
+      try {
+        const stats = fs.statSync(fullPath);
+        if ((stats.mode & 0o777) !== 0o755) {
+          fs.chmodSync(fullPath, 0o755);
+        }
+      } catch (err) {
+        console.warn(`[BOOT] Falha ao ajustar permissões de execução em ${fullPath}:`, err.message);
+      }
+    }
+  }
+}
+
+/**
+ * Recupera o caminho de downloads configurado pelo usuário com expansão de ~
+ */
+function getConfiguredDownloadPath() {
+  try {
+    const userCfgPath = path.join(os.homedir(), '.config/vitrola/config.json');
+    const localCfgPath = getExecutableResourcePath('config/config.json');
+    const cfgPath = fs.existsSync(userCfgPath) ? userCfgPath : localCfgPath;
+
+    if (fs.existsSync(cfgPath)) {
+      const content = fs.readFileSync(cfgPath, 'utf8');
+      const parsed = JSON.parse(content);
+      if (parsed && parsed.storage && parsed.storage.download_dir) {
+        let dir = parsed.storage.download_dir;
+        if (dir.startsWith('~')) {
+          dir = path.join(os.homedir(), dir.slice(1));
+        }
+        return path.resolve(dir);
+      }
+    }
+  } catch (err) {
+    console.warn('[Storage] Falha ao ler configuração de downloads:', err.message);
+  }
+  return getDefaultDownloadPath();
+}
+
+/**
+ * Orquestração do Backend Python em Subprocesso
+ */
+let backendProcess = null;
+let backendPort = 8765;
+let backendHost = '127.0.0.1';
+
+/**
+ * Contrato de Inicialização do Subprocesso:
+ * spawnBackendService(backendEntrypoint: string, envOverrides: Record<string, string>) -> ChildProcess
+ */
+function spawnBackendService(backendEntrypoint, envOverrides = {}) {
+  const binDir = getExecutableResourcePath('bin');
+  ensureBinaryPermissions(binDir);
+
+  const env = {
+    ...process.env,
+    PATH: `${binDir}:${process.env.PATH || ''}`,
+    PYTHONUNBUFFERED: '1',
+    ...envOverrides
+  };
+
+  const pythonExec = process.env.PYTHON || 'python3';
+  const projectRoot = getExecutableResourcePath('');
+
+  console.log(`\x1b[34m[BACKEND] Inicializando serviço Python: ${pythonExec} ${backendEntrypoint} --headless\x1b[0m`);
+  console.log(`\x1b[34m[BACKEND] Diretório de binários ativos: ${binDir}\x1b[0m`);
+
+  const proc = child_process.spawn(pythonExec, [backendEntrypoint, '--headless'], {
+    cwd: projectRoot,
+    env,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  activeProcessesPool.add(proc);
+
+  proc.stdout.on('data', (chunk) => {
+    const text = chunk.toString();
+    console.log(`[BACKEND-STDOUT] ${text.trim()}`);
+    const match = text.match(/http:\/\/([a-zA-Z0-9.]+):(\d+)/);
+    if (match) {
+      backendHost = match[1];
+      backendPort = parseInt(match[2], 10);
+      console.log(`\x1b[32m[BACKEND] Host/porta detectados via telemetria: ${backendHost}:${backendPort}\x1b[0m`);
+    }
+  });
+
+  proc.stderr.on('data', (chunk) => {
+    const text = chunk.toString();
+    console.error(`[BACKEND-STDERR] ${text.trim()}`);
+  });
+
+  proc.on('error', (err) => {
+    logStartupDiagnostic('backend-process-error', { message: err.message, stack: err.stack });
+    console.error('\x1b[31m[BACKEND] Erro crítico no processo filho:\x1b[0m', err.message);
+  });
+
+  proc.on('close', (code, signal) => {
+    console.log(`[BACKEND] Processo filho finalizado com código ${code}, sinal ${signal}`);
+    activeProcessesPool.delete(proc);
+    if (backendProcess === proc) {
+      backendProcess = null;
+    }
+  });
+
+  return proc;
+}
+
+/**
+ * Aguarda a prontidão do servidor HTTP do backend antes de liberar requisições
+ */
+async function waitForBackendReadiness(host, port, maxRetries = 25, delayMs = 200) {
+  const http = require('http');
+  const url = `http://${host}:${port}/api/config`;
+
+  for (let i = 0; i < maxRetries; i++) {
+    const isReady = await new Promise((resolve) => {
+      const req = http.get(url, (res) => {
+        resolve(res.statusCode >= 200 && res.statusCode < 400);
+      });
+      req.on('error', () => resolve(false));
+      req.setTimeout(500, () => {
+        req.destroy();
+        resolve(false);
+      });
+    });
+
+    if (isReady) {
+      console.log(`\x1b[32m[BACKEND] Servidor HTTP pronto e respondendo em http://${host}:${port} após ${i * delayMs}ms\x1b[0m`);
+      return true;
+    }
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+
+  console.warn(`\x1b[33m[BACKEND] Timeout aguardando prontidão do servidor HTTP em http://${host}:${port}. Prosseguindo com o bootstrap...\x1b[0m`);
+  return false;
+}
+
+/**
+ * Encerramento seguro (graceful shutdown) do subprocesso Python
+ */
+function terminateBackendService() {
+  if (backendProcess && !backendProcess.killed) {
+    console.log('\x1b[33m[LIFECYCLE] Encerrando backend Python com segurança (SIGTERM)...\x1b[0m');
+    try {
+      backendProcess.kill('SIGTERM');
+      const procRef = backendProcess;
+      setTimeout(() => {
+        if (procRef && !procRef.killed) {
+          try {
+            console.log('\x1b[33m[LIFECYCLE] Forçando terminação do backend (SIGKILL)...\x1b[0m');
+            procRef.kill('SIGKILL');
+          } catch (_) {}
+        }
+      }, 1500);
+    } catch (e) {
+      console.warn('[LIFECYCLE] Falha ao enviar sinal de término ao backend:', e.message);
+    }
+  }
 }
 
 // 2. Flags de Compatibilidade Gráfica e Compositores Linux (Wayland / X11)
@@ -213,6 +398,33 @@ function registerIpcHandlers() {
       version: APP_CONFIG.VERSION,
       repoUrl: APP_CONFIG.REPOSITORY,
       isFrameless: true
+    };
+  });
+
+  // system:open-download-folder
+  ipcMain.handle('system:open-download-folder', async () => {
+    try {
+      const folderPath = getConfiguredDownloadPath();
+      const resolved = path.resolve(folderPath);
+      if (!fs.existsSync(resolved)) {
+        fs.mkdirSync(resolved, { recursive: true });
+      }
+      const openResult = await shell.openPath(resolved);
+      if (openResult) {
+        return { success: false, error: openResult };
+      }
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // system:getBackendInfo
+  ipcMain.handle('system:getBackendInfo', async () => {
+    return {
+      host: backendHost,
+      port: backendPort,
+      url: `http://${backendHost}:${backendPort}`
     };
   });
 
@@ -552,8 +764,29 @@ let isBootstrapReady = false;
 if (app) {
   app.setName('Vitrola');
 
+  // Proteção defensiva para userData caso ~/.config seja somente leitura
+  try {
+    const defaultUserData = app.getPath('userData');
+    if (!fs.existsSync(defaultUserData)) {
+      fs.mkdirSync(defaultUserData, { recursive: true });
+    }
+  } catch (userDataErr) {
+    try {
+      const fallbackDir = path.join(os.tmpdir(), 'vitrola-userdata');
+      if (!fs.existsSync(fallbackDir)) {
+        fs.mkdirSync(fallbackDir, { recursive: true });
+      }
+      app.setPath('userData', fallbackDir);
+    } catch (_) {}
+  }
+
   // Controle de Instância Única (Single Instance Lock)
-  const gotTheLock = app.requestSingleInstanceLock();
+  let gotTheLock = false;
+  try {
+    gotTheLock = app.requestSingleInstanceLock();
+  } catch (_) {
+    gotTheLock = true;
+  }
   if (!gotTheLock) {
     console.log('\x1b[33m[BOOT] Instância prévia do Vitrola já está ativa. Encerrando segunda chamada...\x1b[0m');
     app.quit();
@@ -566,7 +799,16 @@ if (app) {
     });
 
     app.whenReady().then(async () => {
-      console.log('\x1b[32m[BOOT] Electron app.whenReady disparado. Iniciando bootstrap otimizado...\x1b[0m');
+      console.log('\x1b[32m[BOOT] Electron app.whenReady disparado. Inicializando serviços...\x1b[0m');
+
+      // 1. Inicializar processo filho do backend Python e binários empacotados
+      try {
+        const backendEntrypoint = getExecutableResourcePath('backend/main.py');
+        backendProcess = spawnBackendService(backendEntrypoint);
+        await waitForBackendReadiness(backendHost, backendPort);
+      } catch (backendErr) {
+        logStartupDiagnostic('spawnBackendService', { message: backendErr.message, stack: backendErr.stack });
+      }
 
       mainWindow = await bootstrapOptimizedWindow();
       isBootstrapReady = true;
@@ -580,11 +822,20 @@ if (app) {
       logStartupDiagnostic('app.whenReady', { message: readyErr.message, stack: readyErr.stack });
     });
 
+    app.on('before-quit', () => {
+      terminateBackendService();
+    });
+
+    app.on('will-quit', () => {
+      terminateBackendService();
+    });
+
     app.on('window-all-closed', () => {
       // Se a janela fechou antes do bootstrap terminar, não finalizar de imediato em modo debug
       if (!isBootstrapReady) {
         logStartupDiagnostic('early-window-closed', { message: 'Janela fechada antes da conclusão do bootstrap.' });
       }
+      terminateBackendService();
       if (process.platform !== 'darwin') {
         app.quit();
       }
@@ -595,6 +846,11 @@ if (app) {
 module.exports = {
   APP_CONFIG,
   getDefaultDownloadPath,
+  getConfiguredDownloadPath,
+  getExecutableResourcePath,
+  spawnBackendService,
+  waitForBackendReadiness,
+  terminateBackendService,
   registerIpcHandlers,
   logStartupDiagnostic,
   validateStartupPrerequisites,

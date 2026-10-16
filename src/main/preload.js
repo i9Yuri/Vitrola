@@ -31,6 +31,7 @@ const electronAPI = {
   },
 
   // Storage & Filesystem
+  openDownloadFolder: () => ipcRenderer.invoke('system:open-download-folder'),
   getDefaultDirectory: () => ipcRenderer.invoke('storage:getDefaultDirectory'),
   openDirectory: (dirPath) => ipcRenderer.invoke('storage:openTargetDirectory', dirPath),
   selectDirectory: (currentPath) => ipcRenderer.invoke('storage:updateTargetDirectory', currentPath),
@@ -39,6 +40,8 @@ const electronAPI = {
   getDownloadPath: () => ipcRenderer.invoke('settings:getDownloadPath'),
   changeDownloadPath: (currentPath) => ipcRenderer.invoke('settings:changeDownloadPath', currentPath),
   revealDownloadPath: (dirPath) => ipcRenderer.invoke('settings:revealDownloadPath', dirPath),
+  getBackendUrlSync: () => 'http://127.0.0.1:8765',
+  getBackendInfo: () => ipcRenderer.invoke('system:getBackendInfo'),
 
   // Clipboard
   readClipboard: () => ipcRenderer.invoke('clipboard:read-text'),

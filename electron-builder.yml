@@ -17,6 +17,18 @@ extraResources:
     to: "bin"
     filter:
       - "**/*"
+  - from: "backend"
+    to: "backend"
+    filter:
+      - "**/*"
+  - from: "config"
+    to: "config"
+    filter:
+      - "**/*"
+  - from: "frontend"
+    to: "frontend"
+    filter:
+      - "**/*"
 
 linux:
   target:

@@ -3,6 +3,21 @@
  * Checagem assíncrona, telemetria de integridade e atualização in-place.
  */
 
+async function fetchWithRetry(url, options = {}, maxRetries = 3, intervalMs = 500) {
+  let lastError = null;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fetch(url, options);
+    } catch (err) {
+      lastError = err;
+      if (i < maxRetries - 1) {
+        await new Promise((r) => setTimeout(r, intervalMs));
+      }
+    }
+  }
+  throw lastError;
+}
+
 class YtDlpManager {
   constructor() {
     this.state = {
@@ -43,7 +58,7 @@ class YtDlpManager {
 
   async checkStatus() {
     try {
-      const res = await fetch("/api/updater/status");
+      const res = await fetchWithRetry("/api/updater/status");
       const data = await res.json();
       if (data.success && data.updater) {
         const u = data.updater;
@@ -67,7 +82,7 @@ class YtDlpManager {
     this.notify();
 
     try {
-      const res = await fetch("/api/updater/check", { method: "POST" });
+      const res = await fetchWithRetry("/api/updater/check", { method: "POST" });
       const data = await res.json();
       if (data.success && data.updater) {
         const u = data.updater;

@@ -57,7 +57,7 @@ function registerDownloadHandlers(ipcMain, deps = {}) {
     try {
       const http = require('http');
       return await new Promise((resolve) => {
-        const req = http.get(`http://127.0.0.1:8000/api/download/error-details?taskId=${encodeURIComponent(tid)}`, (res) => {
+        const req = http.get(`http://127.0.0.1:8765/api/download/error-details?taskId=${encodeURIComponent(tid)}`, (res) => {
           let data = '';
           res.on('data', chunk => data += chunk);
           res.on('end', () => {
@@ -110,7 +110,7 @@ function registerDownloadHandlers(ipcMain, deps = {}) {
       const payload = JSON.stringify({ taskId: tid, suppressThumbnail: suppressThumb });
       return await new Promise((resolve) => {
         const req = http.request(
-          'http://127.0.0.1:8000/api/download/retry',
+          'http://127.0.0.1:8765/api/download/retry',
           {
             method: 'POST',
             headers: {

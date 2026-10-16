@@ -273,6 +273,18 @@ nav b.hidden {
   display: grid;
   gap: 8px;
   border: 1px solid var(--line);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.disk:hover {
+  background: var(--s1, var(--card));
+  border-color: var(--acc, var(--accent));
+}
+
+.disk:active {
+  transform: scale(0.985);
 }
 
 .disk p {
@@ -820,7 +832,7 @@ kbd {
    ========================================================================== */
 .rh {
   position: relative;
-  z-index: 1;
+  z-index: 10;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -833,10 +845,13 @@ kbd {
 }
 
 .rh a {
+  position: relative;
+  z-index: 11;
   color: var(--mut, var(--muted));
   font-size: 13px;
   cursor: pointer;
   text-decoration: none;
+  pointer-events: auto;
 }
 
 .rh a:hover {

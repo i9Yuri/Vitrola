@@ -32,6 +32,27 @@ export class Sidebar {
         this.onViewChange(view);
       });
     });
+
+    // Acionamento nativo da pasta de downloads ao clicar no card de status
+    const diskWidget = container.querySelector("#disk-widget") || container.querySelector(".disk");
+    if (diskWidget) {
+      diskWidget.setAttribute("title", "Abrir pasta de downloads");
+      diskWidget.addEventListener("click", async () => {
+        try {
+          if (window.electronAPI && typeof window.electronAPI.openDownloadFolder === "function") {
+            await window.electronAPI.openDownloadFolder();
+          } else {
+            await fetch("/api/open-folder", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+          }
+        } catch (err) {
+          console.warn("[Sidebar] Falha ao abrir pasta de downloads:", err);
+        }
+      });
+    }
   }
 
   setActiveView(view) {

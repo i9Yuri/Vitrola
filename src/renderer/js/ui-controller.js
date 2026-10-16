@@ -17,6 +17,57 @@ import { VinylDisc } from "../components/VinylDisc.js";
 import { ErrorModal } from "../components/ErrorModal.js";
 import { RecentDownloads } from "../components/RecentDownloads.js";
 
+// Interceptor transparente de URL e resiliência de rede para Electron / PySide
+if (!window.__vitrola_api_interceptor_installed) {
+  window.__vitrola_api_interceptor_installed = true;
+  const getBackendBase = () => {
+    if (window.electronAPI && typeof window.electronAPI.getBackendUrlSync === "function") {
+      return window.electronAPI.getBackendUrlSync();
+    }
+    return "http://127.0.0.1:8765";
+  };
+
+  const originalFetch = window.fetch;
+  window.fetch = async function (resource, init) {
+    if (typeof resource === "string" && resource.startsWith("/api/")) {
+      const base = window.location.protocol.startsWith("http") ? "" : getBackendBase();
+      resource = base + resource;
+    } else if (resource instanceof Request && resource.url.startsWith("file:///api/")) {
+      const base = getBackendBase();
+      const newUrl = resource.url.replace("file:///api/", `${base}/api/`);
+      resource = new Request(newUrl, resource);
+    }
+    return originalFetch.call(this, resource, init);
+  };
+
+  const OriginalEventSource = window.EventSource;
+  window.EventSource = function (url, configuration) {
+    if (typeof url === "string" && url.startsWith("/api/")) {
+      const base = window.location.protocol.startsWith("http") ? "" : getBackendBase();
+      url = base + url;
+    }
+    return new OriginalEventSource(url, configuration);
+  };
+}
+
+/**
+ * Health check resiliente com até 3 tentativas (intervalo 500ms) contra a porta do backend
+ */
+export async function fetchWithHealthRetry(url, options = {}, maxRetries = 3, intervalMs = 500) {
+  let lastError = null;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fetch(url, options);
+    } catch (err) {
+      lastError = err;
+      if (i < maxRetries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      }
+    }
+  }
+  throw lastError;
+}
+
 class UIController {
   constructor() {
     this.currentInspection = null;
@@ -468,7 +519,7 @@ class UIController {
     this.btnSearch.disabled = true;
 
     try {
-      const res = await fetch("/api/inspect", {
+      const res = await fetchWithHealthRetry("/api/inspect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
