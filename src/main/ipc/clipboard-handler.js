@@ -22,6 +22,17 @@ async function readClipboardText() {
   return "";
 }
 
+function registerClipboardHandlers(ipcMain) {
+  if (!ipcMain || typeof ipcMain.handle !== "function") return;
+  try {
+    ipcMain.removeHandler("clipboard:read-text");
+    ipcMain.removeHandler("clipboard:readText");
+  } catch (_) {}
+  ipcMain.handle("clipboard:read-text", async () => readClipboardText());
+  ipcMain.handle("clipboard:readText", async () => readClipboardText());
+}
+
 module.exports = {
-  readClipboardText
+  readClipboardText,
+  registerClipboardHandlers
 };

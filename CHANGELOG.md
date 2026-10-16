@@ -2,6 +2,19 @@
 
 Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 
+## [2.5.5] - 2026-10-15
+
+### Consolidação Atômica em Arquivo Único, Purga de Miniaturas Órfãs e Restauração da Colagem Nativa
+- **Entrega de Mídia em Arquivo Único e Eliminação de Artefatos Órfãos**:
+  - Imposição de remux/extração atômica em modos de áudio (incluindo "Áudio Original") através das diretivas `-x` (`--extract-audio`), `--audio-format best` (ou formato selecionado) e `--no-keep-video`. O fluxo Opus original em contêiner WebM é remuxado de forma bit-perfect (`acodec=copy`) para o contêiner legítimo `.opus`.
+  - Embutição definitiva de metadados e imagem de capa em alta definição diretamente no contêiner de áudio consolidado via `--embed-thumbnail` e `--add-metadata`, eliminando o uso de `--write-thumbnail` e impedindo a dispersão de capas avulsas (`.webp`, `.png`) na pasta do usuário.
+  - Implementação da rotina de purga pós-processamento `purgeOrphanThumbnails` (em `src/main/downloader/post-processor.js`, `core.js`, `backend/core/ytdlp_wrapper.py` e `backend/downloader.py`), varrendo o diretório e expurgando arquivos homônimos `.webp`, `.png`, `.jpg`, `.temp` ou contêineres intermediários `.webm`.
+  - Implementação e exportação dos contratos `buildSingleFileAudioArgs(payload)` e `build_single_file_audio_args(...)` nas esteiras Node.js e Python.
+- **Restauração e Blindagem do Botão de Colagem ("Colar")**:
+  - Padronização do handler IPC para a API nativa da área de transferência (`electron.clipboard.readText()`) através de `registerClipboardHandlers(ipcMain)` e métodos consistentes no Preload (`readClipboard`, `readClipboardText`, `clipboard.readText`).
+  - Vinculação delegada e duradoura de eventos de clique em nível de documento (`document.addEventListener('click', ...)` para `#btn-paste`), garantindo resposta tátil imediata imune a re-renderizações dinâmicas da barra de pesquisa.
+  - Higienização com `.trim()`, encerramento silencioso e limpo para conteúdo vazio ou em branco sem poluir o input, despacho do evento nativo `input` (`new Event('input', { bubbles: true })`), foco no input e disparo imediato de inspeção para URLs com protocolo `http://` ou `https://`.
+
 ## [2.5.4] - 2026-10-15
 
 ### Correção de Stacking Context da Busca, Erradicação do Erro HTTP 416 e Restauração do Modal de Diagnóstico

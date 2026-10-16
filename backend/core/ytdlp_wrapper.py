@@ -405,6 +405,103 @@ def purge_partial_download_artifacts(
         print(f"[YtDlp] Warning during partial artifacts scan: {e}")
 
 
+IMAGE_EXTENSIONS = {".webp", ".png", ".jpg", ".jpeg", ".temp"}
+
+
+def purge_orphan_thumbnails(output_audio_path: Union[str, Path, None]) -> None:
+    """Varre o diretório do arquivo final buscando resíduos homônimos com extensões de imagem
+    (.webp, .png, .jpg, .jpeg, .temp) ou contêineres intermediários (.webm quando o destino não é webm)
+    e os remove sumariamente para garantir entrega em arquivo único limpo.
+    """
+    if not output_audio_path:
+        return
+    try:
+        p = Path(output_audio_path).resolve()
+        dir_path = p.parent
+        if not dir_path.is_dir():
+            return
+
+        audio_ext = p.suffix.lower()
+        base_name = p.stem
+        clean_base = re.sub(r"[^\w\s\-\.\u00C0-\u017F]", "", base_name).strip().lower()
+
+        for entry in dir_path.iterdir():
+            if not entry.is_file() or entry == p:
+                continue
+
+            file_ext = entry.suffix.lower()
+            file_stem = entry.stem
+            clean_file_stem = re.sub(r"[^\w\s\-\.\u00C0-\u017F]", "", file_stem).strip().lower()
+
+            is_orphan_image = file_ext in IMAGE_EXTENSIONS
+            is_orphan_intermediate = (
+                (file_ext == ".webm" and audio_ext != ".webm")
+                or entry.name.endswith(".ytdl")
+                or entry.name.endswith(".part")
+            )
+
+            if not is_orphan_image and not is_orphan_intermediate:
+                continue
+
+            is_match = False
+            if file_stem == base_name or clean_file_stem == clean_base:
+                is_match = True
+            elif len(clean_base) >= 4 and (
+                clean_file_stem.startswith(clean_base[:15]) or clean_base.startswith(clean_file_stem[:15])
+            ):
+                is_match = True
+
+            if is_match:
+                try:
+                    entry.unlink(missing_ok=True)
+                    print(f"[YtDlp] Purged orphan thumbnail/artifact: {entry.name}")
+                except Exception as unlink_err:
+                    print(f"[YtDlp] Warning: Could not remove orphan file {entry.name}: {unlink_err}")
+    except Exception as e:
+        print(f"[YtDlp] Warning during orphan thumbnail sweep: {e}")
+
+
+def build_single_file_audio_args(
+    url: str,
+    target_directory: Union[str, Path],
+    format: str = "original",
+    embed_thumbnail: bool = True,
+    embed_metadata: bool = True,
+) -> List[str]:
+    """Constrói os argumentos para download atômico de áudio consolidado em arquivo único,
+    com extração/remux direto via FFmpeg, metadados e miniatura embutidos.
+    """
+    target_fmt = "best" if str(format).lower() in ("original", "source") else str(format).lower()
+    cmd = [
+        YTDLP_BIN,
+        "--ignore-config",
+        "--no-playlist",
+        "--ffmpeg-location",
+        FFMPEG_BIN,
+        "--windows-filenames",
+        "--no-part",
+        "--no-continue",
+        "--concurrent-fragments",
+        "1",
+        "--newline",
+        "-o",
+        f"{str(target_directory)}/%(title)s.%(ext)s",
+        "-x",
+        "--audio-format",
+        target_fmt,
+        "--no-keep-video",
+    ]
+    if NODE_BIN:
+        cmd.extend(["--js-runtimes", f"node:{NODE_BIN}"])
+    if embed_metadata:
+        cmd.append("--add-metadata")
+    if embed_thumbnail:
+        cmd.append("--embed-thumbnail")
+    if url:
+        cmd.append(url)
+    return cmd
+
+
 def build_download_command(
     url: str,
     mode: str,
@@ -465,23 +562,19 @@ def build_download_command(
             # Native best audio stream: Opus preferred, then M4A, then any native audio
             cmd.extend(["-f", "ba[ext=opus]/ba[ext=m4a]/ba"])
 
+        # Remux atômico direto/lossless para contêiner de áudio legítimo (.opus/.m4a/.mp3)
+        # eliminando contêiner WebM órfão e garantindo entrega em arquivo único
+        audio_fmt = "best"
+        if not is_original and target_format and str(target_format).lower() not in ("original", "source", "best"):
+            audio_fmt = str(target_format).lower()
+        cmd.extend(["-x", "--audio-format", audio_fmt, "--no-keep-video"])
+
         # Embed complete metadata and album art / thumbnail
         if embed_metadata:
             cmd.append("--add-metadata")
 
         if embed_thumbnail:
-            # Em modo original ou quando o contêiner bruto é WebM, suprime estritamente
-            # --embed-thumbnail para prevenir erro fatal do Mutagen/yt-dlp.
-            # Salva a miniatura adjacente com --write-thumbnail.
-            is_incompatible = (
-                is_original
-                or (target_format and str(target_format).lower() in ("webm", "original", "source"))
-            ) and (not target_format or not can_embed_thumbnail(target_format))
-
-            if is_incompatible:
-                cmd.append("--write-thumbnail")
-            else:
-                cmd.append("--embed-thumbnail")
+            cmd.append("--embed-thumbnail")
 
         # Lyrics / subtitles embedding if requested
         if embed_subtitles:

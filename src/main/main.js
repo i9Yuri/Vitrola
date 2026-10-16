@@ -8,7 +8,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { getStorageTelemetry } = require('./ipc/storage-telemetry');
-const { readClipboardText } = require('./ipc/clipboard-handler');
+const { readClipboardText, registerClipboardHandlers } = require('./ipc/clipboard-handler');
 const { registerDownloadHandlers } = require('./ipc/download-handler');
 
 const DIAGNOSTICS_DIR = path.join(__dirname, '../../_dev/diagnostics');
@@ -281,12 +281,7 @@ function registerIpcHandlers() {
   });
 
   // clipboard:readText & clipboard:read-text
-  ipcMain.handle('clipboard:readText', async () => {
-    return await readClipboardText();
-  });
-  ipcMain.handle('clipboard:read-text', async () => {
-    return await readClipboardText();
-  });
+  registerClipboardHandlers(ipcMain);
 
   // settings:revealDownloadPath
   ipcMain.handle('settings:revealDownloadPath', async (event, targetPath) => {

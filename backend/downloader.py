@@ -13,6 +13,7 @@ from .core.ytdlp_wrapper import (
     build_download_command,
     clean_media_title,
     purge_partial_download_artifacts,
+    purge_orphan_thumbnails,
 )
 from .core.system import get_download_directory, open_in_file_manager
 
@@ -333,6 +334,7 @@ class DownloadManager:
             merger_regex = re.compile(r"\[Merger\] Merging formats into \"(?P<path>.*)\"")
             destination_regex = re.compile(r"\[download\] Destination: (?P<path>.*)")
             already_regex = re.compile(r"\[download\] (?P<path>.*) has already been downloaded")
+            extract_audio_regex = re.compile(r"\[ExtractAudio\] Destination: (?P<path>.*)")
 
             for raw_line in task.process.stdout:
                 line = raw_line.strip()
@@ -383,6 +385,14 @@ class DownloadManager:
                         task.filepath = m_mrg.group("path").strip()
                         task.filename = Path(task.filepath).name
                     task.broadcast()
+                elif "[ExtractAudio]" in line or "Extracting audio" in line:
+                    task.status = "processing"
+                    task.speed = "Extraindo áudio..."
+                    m_ext = extract_audio_regex.search(line)
+                    if m_ext:
+                        task.filepath = m_ext.group("path").strip()
+                        task.filename = Path(task.filepath).name
+                    task.broadcast()
                 elif "[Metadata]" in line or "Adding metadata" in line:
                     task.status = "processing"
                     task.speed = "Embutindo metadados..."
@@ -417,17 +427,35 @@ class DownloadManager:
                 task.speed = "Concluído"
                 task.eta = "00:00"
 
+                # Check if remux changed extension (e.g., from intermediate .webm to .opus/.m4a/.mp3)
+                if task.filepath and not Path(task.filepath).exists():
+                    p_curr = Path(task.filepath)
+                    for ext in [".opus", ".m4a", ".mp3", ".ogg", ".flac"]:
+                        candidate = p_curr.with_suffix(ext)
+                        if candidate.exists():
+                            task.filepath = str(candidate)
+                            task.filename = candidate.name
+                            break
+
                 # Verify actual file on disk if filepath wasn't captured directly
                 if not task.filepath or not Path(task.filepath).exists():
-                    # Look in download_dir for recently created file
+                    # Look in download_dir for recently created audio/video file
+                    valid_exts = {".opus", ".m4a", ".mp3", ".webm", ".mp4", ".mkv", ".ogg", ".flac"}
                     recent_files = sorted(
-                        download_dir.glob("*.*"),
+                        [p for p in download_dir.glob("*.*") if p.suffix.lower() in valid_exts],
                         key=lambda p: p.stat().st_mtime,
                         reverse=True,
                     )
                     if recent_files:
                         task.filepath = str(recent_files[0])
                         task.filename = recent_files[0].name
+
+                # Purga sistemática defensiva de resíduos de miniaturas (.webp, .png) adjacentes
+                if task.filepath:
+                    try:
+                        purge_orphan_thumbnails(task.filepath)
+                    except Exception as purge_err:
+                        print(f"[Downloader] Aviso na purga de miniaturas órfãs: {purge_err}")
 
                 # Sanitize total_size before recording to history
                 if not task.total_size or str(task.total_size).strip().upper() in ("NA", "N/A", "NONE", "UNDEFINED"):

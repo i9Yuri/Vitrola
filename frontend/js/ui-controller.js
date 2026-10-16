@@ -162,9 +162,14 @@ class UIController {
       });
     }
 
-    if (this.btnPaste) {
-      this.btnPaste.addEventListener("click", () => this.pasteFromClipboard());
-    }
+    // Delegated click listener para #btn-paste resistente a mutações dinâmicas do DOM
+    document.addEventListener("click", (e) => {
+      const pasteBtn = e.target && e.target.closest ? e.target.closest("#btn-paste") : null;
+      if (pasteBtn) {
+        e.preventDefault();
+        this.pasteFromClipboard();
+      }
+    });
 
     // Segmented Mode Toggle (Áudio vs Vídeo)
     this.segBtns.forEach((btn) => {
@@ -397,15 +402,18 @@ class UIController {
   }
 
   async pasteFromClipboard() {
+    if (this._pasting && Date.now() - this._pasting < 250) return;
+    this._pasting = Date.now();
+
     try {
       let text = "";
       if (window.electronAPI) {
-        if (typeof window.electronAPI.readClipboardText === "function") {
+        if (typeof window.electronAPI.readClipboard === "function") {
+          text = await window.electronAPI.readClipboard();
+        } else if (typeof window.electronAPI.readClipboardText === "function") {
           text = await window.electronAPI.readClipboardText();
         } else if (window.electronAPI.clipboard && typeof window.electronAPI.clipboard.readText === "function") {
           text = await window.electronAPI.clipboard.readText();
-        } else if (typeof window.electronAPI.readClipboard === "function") {
-          text = await window.electronAPI.readClipboard();
         } else if (typeof window.electronAPI.clipboardReadText === "function") {
           text = await window.electronAPI.clipboardReadText();
         }

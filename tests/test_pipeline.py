@@ -68,9 +68,10 @@ class TestVitrolaCore(unittest.TestCase):
         self.assertIn("--add-metadata", cmd)
         self.assertIn("--embed-thumbnail", cmd)
         self.assertIn("--ignore-config", cmd)
-        self.assertNotIn("-x", cmd)
-        self.assertNotIn("--audio-format", cmd)
-        self.assertNotIn("mp3", cmd_str)
+        self.assertIn("-x", cmd)
+        self.assertIn("--audio-format", cmd)
+        self.assertIn("--no-keep-video", cmd)
+        self.assertNotIn("--write-thumbnail", cmd)
         # Verify clean output template (no [%(id)s])
         self.assertNotIn("[%(id)s]", cmd_str)
         self.assertIn("/%(title)s.%(ext)s", cmd_str)
@@ -390,6 +391,48 @@ class TestVitrolaCore(unittest.TestCase):
         self.assertFalse(part2.exists(), ".ytdl file should have been deleted")
         self.assertTrue(part3.exists(), "Unrelated partial file should not have been touched")
         self.assertTrue(final_file.exists(), "Completed media file must not be deleted")
+
+    def test_purge_orphan_thumbnails(self):
+        from backend.core.ytdlp_wrapper import purge_orphan_thumbnails
+
+        # Create mock audio file and orphan image files
+        audio_file = self.test_dir / "Pink Floyd - Time.opus"
+        orphan_webp = self.test_dir / "Pink Floyd - Time.webp"
+        orphan_png = self.test_dir / "Pink Floyd - Time.png"
+        orphan_intermediate = self.test_dir / "Pink Floyd - Time.webm"
+        unrelated_image = self.test_dir / "Other Album Cover.jpg"
+
+        audio_file.touch()
+        orphan_webp.touch()
+        orphan_png.touch()
+        orphan_intermediate.touch()
+        unrelated_image.touch()
+
+        purge_orphan_thumbnails(audio_file)
+
+        self.assertTrue(audio_file.exists(), "Audio file must be preserved")
+        self.assertFalse(orphan_webp.exists(), "Orphan webp should be deleted")
+        self.assertFalse(orphan_png.exists(), "Orphan png should be deleted")
+        self.assertFalse(orphan_intermediate.exists(), "Intermediate webm should be deleted")
+        self.assertTrue(unrelated_image.exists(), "Unrelated image should be preserved")
+
+    def test_build_single_file_audio_args(self):
+        from backend.core.ytdlp_wrapper import build_single_file_audio_args
+
+        cmd = build_single_file_audio_args(
+            url="https://youtube.com/watch?v=mock456",
+            target_directory=self.test_dir,
+            format="original",
+            embed_thumbnail=True,
+            embed_metadata=True,
+        )
+        self.assertIn("-x", cmd)
+        self.assertIn("--audio-format", cmd)
+        self.assertIn("best", cmd)
+        self.assertIn("--no-keep-video", cmd)
+        self.assertIn("--embed-thumbnail", cmd)
+        self.assertIn("--add-metadata", cmd)
+        self.assertNotIn("--write-thumbnail", cmd)
 
     def test_no_continue_flags_in_download_command(self):
         cmd = build_download_command(

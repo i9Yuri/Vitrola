@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { purgeOrphanThumbnails } = require('./post-processor');
 
 const SUPPORTED_THUMBNAIL_CONTAINERS = new Set([
   'mp3', 'mkv', 'mka', 'ogg', 'opus', 'flac', 'm4a', 'mp4', 'm4v', 'mov'
@@ -156,21 +157,17 @@ function buildYtDlpDownloadArgs(options = {}) {
       args.push('-f', 'ba[ext=opus]/ba[ext=m4a]/ba');
     }
 
+    // Remux atômico direto/lossless para contêiner de áudio legítimo (.opus/.m4a/.mp3)
+    // eliminando contêiner WebM órfão e arquivos residuais
+    const audioFmt = isOrig ? 'best' : (targetFormat || 'best');
+    args.push('-x', '--audio-format', audioFmt, '--no-keep-video');
+
     if (embedMetadata) {
       args.push('--add-metadata');
     }
 
     if (embedThumbnail) {
-      const isIncompatible = (
-        isOrig ||
-        (targetFormat && ['webm', 'original', 'source'].includes(String(targetFormat).toLowerCase()))
-      ) && (!targetFormat || !canEmbedThumbnail(targetFormat));
-
-      if (isIncompatible) {
-        args.push('--write-thumbnail');
-      } else {
-        args.push('--embed-thumbnail');
-      }
+      args.push('--embed-thumbnail');
     }
 
     if (embedSubtitles) {
@@ -215,11 +212,66 @@ function buildYtDlpDownloadArgs(options = {}) {
 
 const buildDownloadArgs = buildYtDlpDownloadArgs;
 
+/**
+ * Constrói os argumentos de linha de comando para download de áudio em arquivo único,
+ * com extração atômica via FFmpeg, metadados e thumbnail embutidos diretamente no contêiner de áudio.
+ * @param {Object} payload
+ * @param {string} payload.url
+ * @param {string} [payload.targetDirectory]
+ * @param {string} [payload.format='original']
+ * @param {boolean} [payload.embedThumbnail=true]
+ * @param {boolean} [payload.embedMetadata=true]
+ * @returns {string[]}
+ */
+function buildSingleFileAudioArgs(payload = {}) {
+  const {
+    url,
+    targetDirectory,
+    format = 'original',
+    embedThumbnail = true,
+    embedMetadata = true
+  } = payload;
+
+  const targetFmt = String(format).toLowerCase() === 'original' ? 'best' : format;
+
+  const args = [
+    '--no-playlist',
+    '--ignore-config',
+    '--windows-filenames',
+    '--newline',
+    '--no-part',
+    '--concurrent-fragments', '1',
+    '--no-continue'
+  ];
+
+  if (targetDirectory) {
+    args.push('-o', `${targetDirectory}/%(title)s.%(ext)s`);
+  }
+
+  args.push('-x', '--audio-format', targetFmt, '--no-keep-video');
+
+  if (embedMetadata) {
+    args.push('--add-metadata');
+  }
+
+  if (embedThumbnail) {
+    args.push('--embed-thumbnail');
+  }
+
+  if (url) {
+    args.push(url);
+  }
+
+  return args;
+}
+
 module.exports = {
   SUPPORTED_THUMBNAIL_CONTAINERS,
   canEmbedThumbnail,
   extractVideoId,
   purgePartialDownloadArtifacts,
+  purgeOrphanThumbnails,
   buildYtDlpDownloadArgs,
-  buildDownloadArgs
+  buildDownloadArgs,
+  buildSingleFileAudioArgs
 };
